@@ -13,8 +13,6 @@ const VisitListPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [selectedDates, setSelectedDates] = useState<string[]>([]);
 
@@ -47,7 +45,7 @@ const VisitListPage: React.FC = () => {
     if (user) {
       fetchVisits();
     }
-  }, [user]);
+  }, [user, selectedDates]);
 
   useEffect(() => {
     let result = [...visits];
@@ -60,30 +58,23 @@ const VisitListPage: React.FC = () => {
       );
     }
 
-    if (statusFilter !== 'all') {
-      result = result.filter(visit => visit.status === statusFilter);
-    }
-
-    if (typeFilter !== 'all') {
-      result = result.filter(visit => visit.type === typeFilter);
-    }
-
     if (dateFilter !== 'all') {
+      const filterDate = parseISO(dateFilter);
       const today = new Date().toISOString().split('T')[0];
       const tomorrow = addDays(new Date(), 1).toISOString().split('T')[0];
 
       switch (dateFilter) {
         case 'today':
-          result = result.filter(visit => visit.date.split('T')[0] === today);
+          result = result.filter(visit => parseISO(visit.date).getTime() === parseISO(today).getTime());
           break;
         case 'tomorrow':
-          result = result.filter(visit => visit.date.split('T')[0] === tomorrow);
+          result = result.filter(visit => parseISO(visit.date).getTime() === parseISO(tomorrow).getTime());
           break;
         case 'upcoming':
           result = result.filter(visit => visit.date.split('T')[0] > today);
           break;
         default:
-          result = result.filter(visit => visit.date.split('T')[0] === dateFilter);
+          result = result.filter(visit => parseISO(visit.date).getTime() === filterDate.getTime());
       }
     }
 
@@ -211,7 +202,7 @@ const VisitListPage: React.FC = () => {
             {showFilters ? 'Hide Filters' : 'Show Filters'}
           </button>
 
-          {(statusFilter !== 'all' || typeFilter !== 'all') && (
+          {(dateFilter !== 'all') && (
             <button
               onClick={clearFilters}
               className="text-sm text-accent hover:underline"
@@ -223,36 +214,6 @@ const VisitListPage: React.FC = () => {
 
         {showFilters && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-neutral-50 rounded-md border border-neutral-200 animate-fade-in">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Status
-              </label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="input"
-              >
-                <option value="all">All Statuses</option>
-                <option value="Pending">Pending</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">
-                Type
-              </label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="input"
-              >
-                <option value="all">All Types</option>
-                <option value="Delivery">Delivery</option>
-                <option value="Collection">Collection</option>
-              </select>
-            </div>
           </div>
         )}
       </div>

@@ -370,55 +370,6 @@ const AdminDashboardPage: React.FC = () => {
                   </button>
                 </div>
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="input"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Type
-                </label>
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="input"
-                >
-                  <option value="all">All Types</option>
-                  <option value="Delivery">Delivery</option>
-                  <option value="Collection">Collection</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-neutral-700 mb-1">
-                  Reference
-                </label>
-                <select
-                  value={refFilter}
-                  onChange={(e) => setRefFilter(e.target.value)}
-                  className="input"
-                >
-                  <option value="all">All References</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
             
             <div className="flex justify-end">
