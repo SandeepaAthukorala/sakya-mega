@@ -309,40 +309,255 @@ const AdminDashboardPage: React.FC = () => {
         )}
       </div>
 
-      {/* Visit Records */}
+      {/* Filters and Actions */}
       <div className="card bg-white">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Visit Records</h2>
+          
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn btn-secondary py-1 px-3 text-sm"
+            >
+              <Filter size={16} className="mr-1" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
+            
+            <button
+              onClick={exportCSV}
+              className="btn btn-outline py-1 px-3 text-sm"
+            >
+              <Download size={16} className="mr-1" />
+              Export CSV
+            </button>
+          </div>
         </div>
+        
+        {showFilters && (
+          <div className="bg-neutral-50 p-4 rounded-md mb-4 border border-neutral-200 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Date Range
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                    className="input text-sm py-1"
+                  />
+                  <span>to</span>
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                    className="input text-sm py-1"
+                  />
+                </div>
+                <div className="flex space-x-2 mt-2">
+                  <button
+                    onClick={setTodayRange}
+                    className="text-xs bg-neutral-200 hover:bg-neutral-300 px-2 py-1 rounded"
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={setThisWeekRange}
+                    className="text-xs bg-neutral-200 hover:bg-neutral-300 px-2 py-1 rounded"
+                  >
+                    This Week
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Type
+                </label>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">All Types</option>
+                  <option value="Delivery">Delivery</option>
+                  <option value="Collection">Collection</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Reference
+                </label>
+                <select
+                  value={refFilter}
+                  onChange={(e) => setRefFilter(e.target.value)}
+                  className="input"
+                >
+                  <option value="all">All References</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={resetFilters}
+                className="text-accent hover:underline text-sm"
+              >
+                Reset Filters
+              </button>
+            </div>
+          </div>
+        )}
+        
         {isLoading ? (
           <div className="text-center py-10">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent mx-auto"></div>
             <p className="mt-2 text-neutral-600">Loading visits...</p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-neutral-50 text-neutral-700">
-                <tr>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Buyer Name</th>
-                  <th className="px-4 py-3">Phone</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visits.map((visit) => (
-                  <tr key={visit.id} className="border-b border-neutral-200 hover:bg-neutral-50">
-                    <td className="px-4 py-3">{formatDateDisplay(visit.date)}</td>
-                    <td className="px-4 py-3">{visit.buyerName}</td>
-                    <td className="px-4 py-3">{visit.phone}</td>
-                    <td className="px-4 py-3">{visit.type}</td>
-                    <td className="px-4 py-3">{visit.status}</td>
+        ) : filteredVisits.length > 0 ? (
+          <div>
+            <p className="text-sm text-neutral-600 mb-3">
+              Showing {filteredVisits.length} of {visits.length} total visits
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-neutral-50 text-neutral-700">
+                  <tr>
+                    <th 
+                      className="px-4 py-3 cursor-pointer"
+                      onClick={() => handleSort('date')}
+                    >
+                      <div className="flex items-center">
+                        Date
+                        {sortField === 'date' && (
+                          sortDirection === 'asc' ? 
+                            <ChevronUp size={16} className="ml-1" /> : 
+                            <ChevronDown size={16} className="ml-1" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-4 py-3 cursor-pointer"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center">
+                        Buyer
+                        {sortField === 'name' && (
+                          sortDirection === 'asc' ? 
+                            <ChevronUp size={16} className="ml-1" /> : 
+                            <ChevronDown size={16} className="ml-1" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3">Phone</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Reference</th>
+                    <th 
+                      className="px-4 py-3 cursor-pointer"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {sortField === 'status' && (
+                          sortDirection === 'asc' ? 
+                            <ChevronUp size={16} className="ml-1" /> : 
+                            <ChevronDown size={16} className="ml-1" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredVisits.map((visit) => {
+                    const refUser = users.find(u => u.id === visit.refId);
+                    
+                    return (
+                      <tr key={visit.id} className="border-b border-neutral-200 hover:bg-neutral-50">
+                        <td className="px-4 py-3">
+                          {formatDateDisplay(visit.date)}
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {visit.buyerName}
+                        </td>
+                        <td className="px-4 py-3">
+                          {visit.phone}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100">
+                            {visit.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {refUser?.name || 'Unknown'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span 
+                            className={`flex items-center text-xs px-2 py-1 rounded-full ${
+                              visit.status === 'Completed' 
+                                ? 'bg-success/10 text-success' 
+                                : visit.status === 'Pending' 
+                                  ? 'bg-warning/10 text-warning' 
+                                  : 'bg-error/10 text-error'
+                            }`}
+                          >
+                            {visit.status === 'Completed' && <Check size={12} className="mr-1" />}
+                            {visit.status === 'Cancelled' && <X size={12} className="mr-1" />}
+                            {visit.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <a 
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${visit.location.lat},${visit.location.lng}`}
+                            className="text-accent hover:underline flex items-center"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MapPin size={14} className="mr-1" /> Map
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-10">
+            <Calendar size={48} className="mx-auto text-neutral-300 mb-3" />
+            <p className="text-neutral-600 mb-2">No visits found matching your filters</p>
+            <button
+              onClick={resetFilters}
+              className="btn btn-primary"
+            >
+              <RefreshCw size={16} className="mr-1" />
+              Reset Filters
+            </button>
           </div>
         )}
       </div>

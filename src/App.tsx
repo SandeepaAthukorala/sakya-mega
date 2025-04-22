@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -11,10 +11,8 @@ import VisitListPage from './pages/VisitListPage';
 import MapViewPage from './pages/MapViewPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
-import { supabase } from './supabaseClient';
 
 function App() {
-
   return (
     <AuthProvider>
       <Router>

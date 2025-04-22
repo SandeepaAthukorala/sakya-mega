@@ -155,6 +155,78 @@ const DashboardPage: React.FC = () => {
           </a>
         )}
       </div>
+
+      {/* Today's Visits */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-neutral-900">Today's Visits</h2>
+          <Link to="/visits" className="text-accent text-sm font-medium hover:underline">
+            View All
+          </Link>
+        </div>
+        
+        {isLoading ? (
+          <div className="text-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent mx-auto"></div>
+            <p className="mt-2 text-neutral-600">Loading visits...</p>
+          </div>
+        ) : todayVisits.length > 0 ? (
+          <div className="space-y-3">
+            {todayVisits.map((visit) => (
+              <div 
+                key={visit.id} 
+                className={`card border-l-4 ${
+                  visit.status === 'Completed' 
+                    ? 'border-success' 
+                    : visit.status === 'Pending' 
+                      ? 'border-warning' 
+                      : 'border-error'
+                }`}
+              >
+                <div className="flex justify-between">
+                  <div>
+                    <h3 className="font-medium">{visit.buyerName}</h3>
+                    <p className="text-sm text-neutral-600">
+                      {visit.location.address || 'No address provided'}
+                    </p>
+                    <p className="text-xs text-neutral-500 mt-1">
+                      {visit.type} • {visit.phone}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span 
+                      className={`text-xs px-2 py-1 rounded-full ${
+                        visit.status === 'Completed' 
+                          ? 'bg-success/10 text-success' 
+                          : visit.status === 'Pending' 
+                            ? 'bg-warning/10 text-warning' 
+                            : 'bg-error/10 text-error'
+                      }`}
+                    >
+                      {visit.status}
+                    </span>
+                    <a 
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${visit.location.lat},${visit.location.lng}`}
+                      className="text-accent text-sm mt-2 flex items-center hover:underline"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Navigation size={14} className="mr-1" /> Navigate
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="card py-8 text-center">
+            <p className="text-neutral-600 mb-4">No visits scheduled for today</p>
+            <Link to="/visits/new" className="btn btn-primary">
+              <Plus size={18} className="mr-2" /> Add New Visit
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
