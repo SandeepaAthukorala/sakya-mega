@@ -1,0 +1,81 @@
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import Layout from './components/layout/Layout';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import DashboardPage from './pages/DashboardPage';
+import VisitFormPage from './pages/VisitFormPage';
+import VisitListPage from './pages/VisitListPage';
+import MapViewPage from './pages/MapViewPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import NotFoundPage from './pages/NotFoundPage';
+import { supabase } from './supabaseClient';
+
+function App() {
+
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          
+          <Route element={<Layout />}>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/visits/new" 
+              element={
+                <ProtectedRoute>
+                  <VisitFormPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/visits" 
+              element={
+                <ProtectedRoute>
+                  <VisitListPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/map" 
+              element={
+                <ProtectedRoute>
+                  <MapViewPage />
+                </ProtectedRoute>
+              } 
+            />
+            
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute requiredRole="Admin">
+                  <AdminDashboardPage />
+                </ProtectedRoute>
+              } 
+            />
+          </Route>
+          
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
