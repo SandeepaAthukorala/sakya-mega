@@ -445,7 +445,7 @@ const AdminDashboardPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {filteredVisits.map((visit) => {
-                    const refUser = users.find(u => u.id === visit.refId);
+                    const refUser = users.find(u => u.id === visit.ref_id);
                     
                     return (
                       <tr key={visit.id} className="border-b border-neutral-200 hover:bg-neutral-50">
@@ -453,7 +453,7 @@ const AdminDashboardPage: React.FC = () => {
                           {formatDateDisplay(visit.date)}
                         </td>
                         <td className="px-4 py-3 font-medium">
-                          {visit.buyerName}
+                          {visit.buyer_name}
                         </td>
                         <td className="px-4 py-3">
                           {visit.phone}
@@ -464,7 +464,7 @@ const AdminDashboardPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {refUser?.name || 'Unknown'}
+                          {refUser ? `${refUser.first_name} ${refUser.last_name}` : 'Unknown'}
                         </td>
                         <td className="px-4 py-3">
                           <span 

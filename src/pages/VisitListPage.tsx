@@ -1,21 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Search, Filter, MapPin, ChevronRight, Map, Check, X, Calendar, ArrowDownAZ, Trash2 } from 'lucide-react';
-import { Visit } from '../types';
+import { BarChart2, MapPin, Calendar, Filter, Download, User, RefreshCw, ChevronDown, ChevronUp, Check, X, Trash2 } from 'lucide-react';
+import { Visit, User as UserType } from '../types';
 import { supabase } from '../supabaseClient';
-import { format, parseISO, addDays } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 
-const VisitListPage: React.FC = () => {
+const AdminDashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [visits, setVisits] = useState<Visit[]>([]);
-  const [filteredVisits, setFilteredVisits] = useState<Visit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [dateFilter, setDateFilter] = useState<string>('all');
-  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<{start: string, end: string}>({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0],
+  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [refFilter, setRefFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<string>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [refs, setRefs] = useState<UserType[]>([]);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  
+  // This week range for stats
+  const thisWeekStart = startOfWeek(new Date()).toISOString().split('T')[0];
+  const thisWeekEnd = endOfWeek(new Date()).toISOString().split('T')[0];
 
+  // Fetch visits
   useEffect(() => {
     const fetchVisits = async () => {
       setIsLoading(true);
@@ -23,7 +35,6 @@ const VisitListPage: React.FC = () => {
         const { data, error } = await supabase
           .from('visits')
           .select('*')
-          .eq('ref_id', user?.id)
           .order('date', { ascending: false });
 
         if (error) {
@@ -31,285 +42,472 @@ const VisitListPage: React.FC = () => {
         }
 
         setVisits(data || []);
-        setFilteredVisits(data || []);
-
-        const uniqueDates = Array.from(new Set((data || []).map(visit =>
-          visit.date.split('T')[0]
-        ))).sort();
-        setSelectedDates(uniqueDates);
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (user) {
-      fetchVisits();
-    }
-  }, [user, selectedDates]);
+    const fetchUsers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*');
 
-  useEffect(() => {
-    let result = [...visits];
+        if (error) {
+          console.error('Error fetching users:', error);
+        }
 
-    if (searchTerm) {
-      result = result.filter(visit =>
-        visit.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visit.phone.includes(searchTerm) ||
-        (visit.location.address && visit.location.address.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-    }
-
-    if (dateFilter !== 'all') {
-      const filterDate = parseISO(dateFilter);
-      const today = new Date().toISOString().split('T')[0];
-      const tomorrow = addDays(new Date(), 1).toISOString().split('T')[0];
-
-      switch (dateFilter) {
-        case 'today':
-          result = result.filter(visit => parseISO(visit.date).getTime() === parseISO(today).getTime());
-          break;
-        case 'tomorrow':
-          result = result.filter(visit => parseISO(visit.date).getTime() === parseISO(tomorrow).getTime());
-          break;
-        case 'upcoming':
-          result = result.filter(visit => visit.date.split('T')[0] > today);
-          break;
-        default:
-          result = result.filter(visit => parseISO(visit.date).getTime() === filterDate.getTime());
+        setUsers(data || []);
+        setRefs((data || []).filter(user => user.role === 'Ref'));
+      } catch (error) {
+        console.error('Error fetching users:', error);
       }
+    };
+
+    fetchVisits();
+    fetchUsers();
+  }, []);
+  
+  // Filtered and sorted visits
+  const filteredVisits = visits.filter(visit => {
+    // Date range filter
+    const visitDate = visit.date.split('T')[0];
+    const isInDateRange = visitDate >= dateRange.start && visitDate <= dateRange.end;
+    
+    // Status filter
+    const matchesStatus = statusFilter === 'all' || visit.status === statusFilter;
+    
+    // Type filter
+    const matchesType = typeFilter === 'all' || visit.type === typeFilter;
+    
+    // Ref filter
+    const matchesRef = refFilter === 'all' || visit.refId === refFilter;
+    
+    return isInDateRange && matchesStatus && matchesType && matchesRef;
+  }).sort((a, b) => {
+    // Handle sorting
+    if (sortField === 'date') {
+      return sortDirection === 'asc' 
+        ? a.date.localeCompare(b.date)
+        : b.date.localeCompare(a.date);
+    } else if (sortField === 'name') {
+      return sortDirection === 'asc'
+        ? a.buyerName.localeCompare(b.buyerName)
+        : b.buyerName.localeCompare(a.buyerName);
+    } else if (sortField === 'status') {
+      return sortDirection === 'asc'
+        ? a.status.localeCompare(b.status)
+        : b.status.localeCompare(a.status);
     }
-
-    setFilteredVisits(result);
-  }, [visits, searchTerm, statusFilter, typeFilter, dateFilter]);
-
-  const clearFilters = () => {
-    setSearchTerm('');
+    return 0;
+  });
+  
+  // Calculate statistics
+  const stats = {
+    today: visits.filter(v => v.date.split('T')[0] === new Date().toISOString().split('T')[0]).length,
+    thisWeek: visits.filter(v => {
+      const visitDate = v.date.split('T')[0];
+      return visitDate >= thisWeekStart && visitDate <= thisWeekEnd;
+    }).length,
+    completed: visits.filter(v => v.status === 'Completed').length,
+    pending: visits.filter(v => v.status === 'Pending').length,
+    total: visits.length,
+  };
+  
+  const completionRate = stats.total > 0 
+    ? Math.round((stats.completed / stats.total) * 100) 
+    : 0;
+  
+  // Handle sorting
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+  
+  // Export as CSV
+  const exportCSV = () => {
+    // In a real implementation, this would generate a CSV file
+    // For this mockup, we'll just show a message
+    alert('Exporting visits as CSV...');
+  };
+  
+  // Set this week as date range
+  const setThisWeekRange = () => {
+    setDateRange({
+      start: thisWeekStart,
+      end: thisWeekEnd,
+    });
+  };
+  
+  // Set today as date range
+  const setTodayRange = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setDateRange({
+      start: today,
+      end: today,
+    });
+  };
+  
+  // Reset filters
+  const resetFilters = () => {
+    setDateRange({
+      start: new Date().toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0],
+    });
     setStatusFilter('all');
     setTypeFilter('all');
-    setDateFilter('all');
-    setShowFilters(false);
+    setRefFilter('all');
   };
 
-  const formatDate = (dateString: string) => {
+  // Format date
+  const formatDateDisplay = (dateString: string) => {
     try {
-      const date = parseISO(dateString);
-      return format(date, 'MMM d, yyyy');
+      return format(parseISO(dateString), 'MMM d, yyyy');
     } catch {
       return dateString;
     }
   };
 
-  const deleteVisit = async (visitId: string) => {
-    if (window.confirm('Are you sure you want to delete this visit?')) {
-      try {
-        const { error } = await supabase
-          .from('visits')
-          .delete()
-          .eq('id', visitId);
+  const handleDeleteRef = async (refId: string) => {
+    setIsDeleting(refId);
+    try {
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', refId);
 
-        if (error) {
-          console.error('Error deleting visit:', error);
-        } else {
-          setVisits(visits.filter(visit => visit.id !== visitId));
-        }
-      } catch (error) {
-        console.error('Error deleting visit:', error);
+      if (error) {
+        console.error('Error deleting ref:', error);
+        alert('Failed to delete ref. Please try again.');
+      } else {
+        setRefs(refs.filter(ref => ref.id !== refId));
+        alert('Ref deleted successfully.');
       }
+    } catch (error) {
+      console.error('Error deleting ref:', error);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsDeleting(null);
     }
-  };
-
-  const getVisitCountForDate = (date: string, type?: 'Delivery' | 'Collection') => {
-    return visits.filter(visit =>
-      visit.date.split('T')[0] === date &&
-      (!type || visit.type === type)
-    ).length;
   };
 
   return (
     <div className="space-y-6 pt-4 pb-16 animate-fade-in">
-      <header className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-neutral-900">Visits</h1>
-        <Link to="/visits/new" className="btn btn-primary">
-          <Plus size={18} className="mr-1" /> New Visit
-        </Link>
+      <header>
+        <h1 className="text-2xl font-bold text-neutral-900">Admin Dashboard</h1>
+        <p className="text-neutral-600 mt-1">
+          {format(new Date(), 'EEEE, MMMM do, yyyy')}
+        </p>
       </header>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-medium text-neutral-600">Filter by Date</h2>
-          {dateFilter !== 'all' && (
-            <button
-              onClick={() => setDateFilter('all')}
-              className="text-xs text-accent hover:underline"
-            >
-              Clear date filter
-            </button>
-          )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="card bg-white px-4 py-5">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-accent/10 text-accent">
+              <MapPin size={24} />
+            </div>
+            <div className="ml-4">
+              <h2 className="text-sm font-medium text-neutral-500">Today's Visits</h2>
+              <p className="text-2xl font-semibold text-neutral-900">{stats.today}</p>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {selectedDates.map(date => {
-            const isSelected = dateFilter === date;
-            const deliveryCount = getVisitCountForDate(date, 'Delivery');
-            const collectionCount = getVisitCountForDate(date, 'Collection');
-
-            return (
-              <button
-                key={date}
-                onClick={() => setDateFilter(isSelected ? 'all' : date)}
-                className={`inline-flex flex-col items-start p-2 rounded-md border ${isSelected
-                  ? 'border-accent bg-accent/5 text-accent'
-                  : 'border-neutral-200 hover:border-accent/50'
-                  }`}
-              >
-                <span className="text-sm font-medium">{formatDate(date)}</span>
-                <div className="flex gap-2 mt-1">
-                  {deliveryCount > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-accent/10 text-accent">
-                      {deliveryCount} Delivery
-                    </span>
-                  )}
-                  {collectionCount > 0 && (
-                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">
-                      {collectionCount} Collection
-                    </span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+        
+        <div className="card bg-white px-4 py-5">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-accent/10 text-accent">
+              <Calendar size={24} />
+            </div>
+            <div className="ml-4">
+              <h2 className="text-sm font-medium text-neutral-500">This Week</h2>
+              <p className="text-2xl font-semibold text-neutral-900">{stats.thisWeek}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card bg-white px-4 py-5">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-success/10 text-success">
+              <BarChart2 size={24} />
+            </div>
+            <div className="ml-4">
+              <h2 className="text-sm font-medium text-neutral-500">Completion Rate</h2>
+              <p className="text-2xl font-semibold text-neutral-900">{completionRate}%</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card bg-white px-4 py-5">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-warning/10 text-warning">
+              <User size={24} />
+            </div>
+            <div className="ml-4">
+              <h2 className="text-sm font-medium text-neutral-500">Refs</h2>
+              <p className="text-2xl font-semibold text-neutral-900">{users.filter(u => u.role === 'Ref').length}</p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={18} className="text-neutral-500" />
+      {/* Ref Records */}
+      <div className="card bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Ref Records</h2>
+        </div>
+        {isLoading ? (
+          <div className="text-center py-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent mx-auto"></div>
+            <p className="mt-2 text-neutral-600">Loading refs...</p>
           </div>
-          <input
-            type="text"
-            placeholder="Search by name, phone or address..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="input pl-10 w-full"
-          />
-        </div>
-
-        <div className="flex justify-between items-center">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="btn btn-secondary py-1 px-3 text-sm"
-          >
-            <Filter size={16} className="mr-1" />
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
-          </button>
-
-          {(dateFilter !== 'all') && (
-            <button
-              onClick={clearFilters}
-              className="text-sm text-accent hover:underline"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-
-        {showFilters && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-neutral-50 rounded-md border border-neutral-200 animate-fade-in">
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-neutral-50 text-neutral-700">
+                <tr>
+                  <th className="px-4 py-3">Name</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {refs.map((ref) => (
+                  <tr key={ref.id} className="border-b border-neutral-200 hover:bg-neutral-50">
+                    <td className="px-4 py-3">{ref.first_name} {ref.last_name}</td>
+                    <td className="px-4 py-3">{ref.email}</td>
+                    <td className="px-4 py-3">{ref.role}</td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleDeleteRef(ref.id)}
+                        disabled={isDeleting === ref.id}
+                        className="text-error hover:underline flex items-center"
+                      >
+                        {isDeleting === ref.id ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-error mr-2"></div>
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 size={16} className="mr-1" />
+                            Delete
+                          </>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
 
-      <div>
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-sm text-neutral-600">{filteredVisits.length} visits found</p>
-
-          <Link to="/map" className="btn btn-outline py-1 px-3 text-sm">
-            <Map size={16} className="mr-1" /> View on Map
-          </Link>
+      {/* Filters and Actions */}
+      <div className="card bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Visit Records</h2>
+          
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="btn btn-secondary py-1 px-3 text-sm"
+            >
+              <Filter size={16} className="mr-1" />
+              {showFilters ? 'Hide Filters' : 'Show Filters'}
+            </button>
+            
+            <button
+              onClick={exportCSV}
+              className="btn btn-outline py-1 px-3 text-sm"
+            >
+              <Download size={16} className="mr-1" />
+              Export CSV
+            </button>
+          </div>
         </div>
-
+        
+        {showFilters && (
+          <div className="bg-neutral-50 p-4 rounded-md mb-4 border border-neutral-200 animate-fade-in">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">
+                  Date Range
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="date"
+                    value={dateRange.start}
+                    onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                    className="input text-sm py-1"
+                  />
+                  <span>to</span>
+                  <input
+                    type="date"
+                    value={dateRange.end}
+                    onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                    className="input text-sm py-1"
+                  />
+                </div>
+                <div className="flex space-x-2 mt-2">
+                  <button
+                    onClick={setTodayRange}
+                    className="text-xs bg-neutral-200 hover:bg-neutral-300 px-2 py-1 rounded"
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={setThisWeekRange}
+                    className="text-xs bg-neutral-200 hover:bg-neutral-300 px-2 py-1 rounded"
+                  >
+                    This Week
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button
+                onClick={resetFilters}
+                className="text-accent hover:underline text-sm"
+              >
+                Reset Filters
+              </button>
+            </div>
+          </div>
+        )}
+        
         {isLoading ? (
           <div className="text-center py-10">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-accent mx-auto"></div>
             <p className="mt-2 text-neutral-600">Loading visits...</p>
           </div>
         ) : filteredVisits.length > 0 ? (
-          <div className="space-y-3">
-            {filteredVisits.map((visit) => (
-              <div
-                key={visit.id}
-                className={`card border-l-4 ${visit.status === 'Completed'
-                  ? 'border-success'
-                  : visit.status === 'Pending'
-                    ? 'border-warning'
-                    : 'border-error'
-                  }`}
-              >
-                <div className="flex justify-between">
-                  <div>
-                    <div className="flex items-center">
-                      <h3 className="font-medium">{visit.buyerName}</h3>
-                      <span className="ml-2 text-xs uppercase px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700">
-                        {visit.type}
-                      </span>
-                    </div>
-                    <p className="text-sm text-neutral-600 flex items-center mt-1">
-                      <MapPin size={14} className="mr-1 flex-shrink-0" />
-                      {visit.location.address || 'No address provided'}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2 text-sm text-neutral-600">
-                      <div className="flex items-center">
-                        <Calendar size={14} className="mr-1" />
-                        {formatDate(visit.date)}
-                      </div>
-                      <div>
-                        <ArrowDownAZ size={14} className="mr-1 inline-block" />
-                        {visit.notes || 'No notes'}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`flex items-center text-xs px-2 py-1 rounded-full ${visit.status === 'Completed'
-                          ? 'bg-success/10 text-success'
-                          : visit.status === 'Pending'
-                            ? 'bg-warning/10 text-warning'
-                            : 'bg-error/10 text-error'
-                          }`}
-                      >
-                        {visit.status === 'Completed' && <Check size={12} className="mr-1" />}
-                        {visit.status === 'Cancelled' && <X size={12} className="mr-1" />}
-                        {visit.status}
-                      </span>
-                      <button
-                        onClick={() => deleteVisit(visit.id)}
-                        className="p-1 text-neutral-400 hover:text-error rounded-full hover:bg-error/10"
-                        title="Delete visit"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${visit.location.lat},${visit.location.lng}`}
-                      className="text-accent text-sm mt-2 flex items-center hover:underline"
-                      target="_blank"
-                      rel="noopener noreferrer"
+          <div>
+            <p className="text-sm text-neutral-600 mb-3">
+              Showing {filteredVisits.length} of {visits.length} total visits
+            </p>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-neutral-50 text-neutral-700">
+                  <tr>
+                    <th 
+                      className="px-4 py-3 cursor-pointer"
+                      onClick={() => handleSort('date')}
                     >
-                      <MapPin size={14} className="mr-1" /> Navigate
-                    </a>
-                    <div className="mt-2 flex items-center text-neutral-400 hover:text-accent">
-                      <ChevronRight size={18} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      <div className="flex items-center">
+                        Date
+                        {sortField === 'date' && (
+                          sortDirection === 'asc' ? 
+                            <ChevronUp size={16} className="ml-1" /> : 
+                            <ChevronDown size={16} className="ml-1" />
+                        )}
+                      </div>
+                    </th>
+                    <th 
+                      className="px-4 py-3 cursor-pointer"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center">
+                        Buyer
+                        {sortField === 'name' && (
+                          sortDirection === 'asc' ? 
+                            <ChevronUp size={16} className="ml-1" /> : 
+                            <ChevronDown size={16} className="ml-1" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3">Phone</th>
+                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Reference</th>
+                    <th 
+                      className="px-4 py-3 cursor-pointer"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {sortField === 'status' && (
+                          sortDirection === 'asc' ? 
+                            <ChevronUp size={16} className="ml-1" /> : 
+                            <ChevronDown size={16} className="ml-1" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredVisits.map((visit) => {
+                    const refUser = users.find(u => u.id === visit.ref_id);
+                    
+                    return (
+                      <tr key={visit.id} className="border-b border-neutral-200 hover:bg-neutral-50">
+                        <td className="px-4 py-3">
+                          {formatDateDisplay(visit.date)}
+                        </td>
+                        <td className="px-4 py-3 font-medium">
+                          {visit.buyer_name}
+                        </td>
+                        <td className="px-4 py-3">
+                          {visit.phone}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100">
+                            {visit.type}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {refUser ? `${refUser.first_name} ${refUser.last_name}` : 'Unknown'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span 
+                            className={`flex items-center text-xs px-2 py-1 rounded-full ${
+                              visit.status === 'Completed' 
+                                ? 'bg-success/10 text-success' 
+                                : visit.status === 'Pending' 
+                                  ? 'bg-warning/10 text-warning' 
+                                  : 'bg-error/10 text-error'
+                            }`}
+                          >
+                            {visit.status === 'Completed' && <Check size={12} className="mr-1" />}
+                            {visit.status === 'Cancelled' && <X size={12} className="mr-1" />}
+                            {visit.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <a 
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${visit.location.lat},${visit.location.lng}`}
+                            className="text-accent hover:underline flex items-center"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <MapPin size={14} className="mr-1" /> Map
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
-          <div className="card py-8 text-center">
-            <p className="text-neutral-600 mb-4">No visits found matching your filters</p>
-            <button onClick={clearFilters} className="btn btn-primary">
-              Clear All Filters
+          <div className="text-center py-10">
+            <Calendar size={48} className="mx-auto text-neutral-300 mb-3" />
+            <p className="text-neutral-600 mb-2">No visits found matching your filters</p>
+            <button
+              onClick={resetFilters}
+              className="btn btn-primary"
+            >
+              <RefreshCw size={16} className="mr-1" />
+              Reset Filters
             </button>
           </div>
         )}
@@ -318,4 +516,4 @@ const VisitListPage: React.FC = () => {
   );
 };
 
-export default VisitListPage;
+export default AdminDashboardPage;
