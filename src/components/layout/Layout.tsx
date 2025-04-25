@@ -1,7 +1,6 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navbar from './Navbar';
-import BottomNav from './BottomNav';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Layout: React.FC = () => {
@@ -21,7 +20,6 @@ const Layout: React.FC = () => {
         <Outlet />
       </main>
       
-      {showNav && <BottomNav />}
     </div>
   );
 };

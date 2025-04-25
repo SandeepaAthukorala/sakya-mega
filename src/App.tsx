@@ -11,8 +11,21 @@ import VisitListPage from './pages/VisitListPage';
 import MapViewPage from './pages/MapViewPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
+import { useAuth } from './contexts/AuthContext';
 
 function App() {
+  const ConditionalRedirect = () => {
+    const { user } = useAuth();
+
+    if (user?.role === 'Admin') {
+      return <Navigate to="/admin" replace />;
+    } else if (user?.role === 'Ref') {
+      return <Navigate to="/visits" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
+  };
+
   return (
     <AuthProvider>
       <Router>
@@ -21,7 +34,7 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
           
           <Route element={<Layout />}>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<ConditionalRedirect />} />
             
             <Route 
               path="/dashboard" 

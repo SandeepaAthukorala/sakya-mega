@@ -1,11 +1,12 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Menu, X, User, LogOut } from 'lucide-react';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
@@ -14,6 +15,15 @@ const Navbar: React.FC = () => {
   const isActive = (path: string) => {
     return location.pathname === path ? 'active' : '';
   };
+
+  // Conditionally set default active tab based on user role
+  React.useEffect(() => {
+    if (user?.role === 'Admin' && location.pathname === '/dashboard') {
+      navigate('/admin', { replace: true });
+    } else if (user?.role === 'Ref' && location.pathname === '/dashboard') {
+      navigate('/visits', { replace: true });
+    }
+  }, [user, location.pathname, navigate]);
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-10">
@@ -27,27 +37,13 @@ const Navbar: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-2">
-            <Link to="/dashboard" className={`nav-link ${isActive('/dashboard')}`}>
-              Dashboard
-            </Link>
-            <Link to="/visits" className={`nav-link ${isActive('/visits')}`}>
-              Visits
-            </Link>
-            <Link to="/map" className={`nav-link ${isActive('/map')}`}>
-              Map
-            </Link>
-            {user?.role === 'Admin' && (
-              <Link to="/admin" className={`nav-link ${isActive('/admin')}`}>
-                Admin
-              </Link>
-            )}
           </nav>
 
           {/* User Menu */}
           <div className="hidden md:flex items-center">
             <div className="relative ml-3">
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">{user?.name}</span>
+                <span className="text-sm font-medium">{user?.first_name} {user?.last_name}</span>
                 <button
                   onClick={logout}
                   className="btn btn-outline py-1 px-3 text-sm"
@@ -75,36 +71,6 @@ const Navbar: React.FC = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-neutral-200 animate-fade-in">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            <Link
-              to="/dashboard"
-              className={`nav-link block ${isActive('/dashboard')}`}
-              onClick={closeMenu}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/visits"
-              className={`nav-link block ${isActive('/visits')}`}
-              onClick={closeMenu}
-            >
-              Visits
-            </Link>
-            <Link
-              to="/map"
-              className={`nav-link block ${isActive('/map')}`}
-              onClick={closeMenu}
-            >
-              Map
-            </Link>
-            {user?.role === 'Admin' && (
-              <Link
-                to="/admin"
-                className={`nav-link block ${isActive('/admin')}`}
-                onClick={closeMenu}
-              >
-                Admin
-              </Link>
-            )}
           </div>
           <div className="pt-4 pb-3 border-t border-neutral-200">
             <div className="flex items-center justify-between px-5">
@@ -113,7 +79,7 @@ const Navbar: React.FC = () => {
                   <User className="h-8 w-8 rounded-full bg-neutral-200 p-1" />
                 </div>
                 <div className="ml-3">
-                  <div className="text-base font-medium">{user?.name}</div>
+                  <div className="text-base font-medium">{user?.first_name} {user?.last_name}</div>
                   <div className="text-sm text-neutral-500">{user?.role}</div>
                 </div>
               </div>
