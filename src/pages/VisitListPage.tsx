@@ -306,7 +306,10 @@ const VisitListPage: React.FC = () => {
                            {visit.buyer_name || 'N/A'}
                         </h3>
                       )}
-                       {editingVisitId === visit.id ? (
+
+                    </div>
+                     <div className="flex items-center text-sm text-neutral-600">
+										                       {editingVisitId === visit.id ? (
                         <select
                           value={editedVisit.type}
                           onChange={(e) => setEditedVisit({ ...editedVisit, type: e.target.value })}
@@ -321,7 +324,6 @@ const VisitListPage: React.FC = () => {
                         </span>
                       )}
                     </div>
-
                      {/* Phone */}
                      <div className="flex items-center text-sm text-neutral-600">
                       <Phone size={14} className="mr-1.5 flex-shrink-0 text-neutral-500" />

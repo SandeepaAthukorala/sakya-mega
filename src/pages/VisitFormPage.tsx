@@ -198,7 +198,7 @@ const VisitFormPage: React.FC = () => {
 
             <div>
               <label htmlFor="itemId" className="block text-sm font-medium text-neutral-700 mb-1">
-                Item ID (Optional)
+                Item ID
               </label>
               <div className="relative">
                 <input
@@ -208,6 +208,7 @@ const VisitFormPage: React.FC = () => {
                   onChange={(e) => setItemId(e.target.value)}
                   className="input"
                   placeholder="Enter item ID"
+									required
                 />
               </div>
             </div>
