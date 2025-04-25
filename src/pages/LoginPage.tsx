@@ -85,12 +85,6 @@ const LoginPage: React.FC = () => {
                 Remember me
               </label>
             </div>
-            
-            <div className="text-sm">
-              <a href="#" className="text-accent hover:text-accent-dark">
-                Forgot your password?
-              </a>
-            </div>
           </div>
           
           <button
