@@ -88,7 +88,7 @@ function App() {
           href="https://yaksen.com/"
           target="_blank"
           rel="noopener noreferrer"
-          className="fixed bottom-1 right-1 p-0 flex items-center justify-center gap-2 custom-floating-button"
+          className="fixed bottom-1 right-1 p-1 flex items-center justify-center gap-2 custom-floating-button"
           style={{zIndex: 1000}}
         >
           <img
