@@ -10,6 +10,7 @@ const VisitFormPage: React.FC = () => {
   const [visitType, setVisitType] = useState<'Delivery' | 'Collection'>('Delivery');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
+  const [itemId, setItemId] = useState('');
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -46,7 +47,6 @@ const VisitFormPage: React.FC = () => {
             break;
           case error.POSITION_UNAVAILABLE:
             errorMsg = 'Location information is unavailable.';
-            break;
           case error.TIMEOUT:
             errorMsg = 'Location request timed out.';
             break;
@@ -81,6 +81,7 @@ const VisitFormPage: React.FC = () => {
           type: visitType,
           status: 'Pending',
           notes: notes || undefined,
+          item_id: itemId || undefined,
         })
         .single();
 
@@ -95,6 +96,7 @@ const VisitFormPage: React.FC = () => {
       setVisitType('Delivery');
       setVisitDate(new Date().toISOString().split('T')[0]);
       setNotes('');
+      setItemId('');
       setLocation(null);
       
       setTimeout(() => {
@@ -190,6 +192,22 @@ const VisitFormPage: React.FC = () => {
                   className="input pl-10"
                   required
                   placeholder="Enter buyer's phone number"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="itemId" className="block text-sm font-medium text-neutral-700 mb-1">
+                Item ID (Optional)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="itemId"
+                  value={itemId}
+                  onChange={(e) => setItemId(e.target.value)}
+                  className="input"
+                  placeholder="Enter item ID"
                 />
               </div>
             </div>
