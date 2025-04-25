@@ -396,6 +396,20 @@ const AdminDashboardPage: React.FC = () => {
             {/* Stack vertically on mobile (col-1), 2 cols on sm+, 4 cols on md+ */}
             {/* Keep padding inside stats cards container consistent */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 px-0"> {/* Start with 1 col, adjust gap */}
+                {/* Today's Visits Card */}
+                {/* Adjusted padding inside card */}
+                <div className="card bg-white p-4 shadow-sm border border-neutral-200">
+                    <div className="flex items-center">
+                         {/* Consistent icon padding/size */}
+                        <div className="p-3 rounded-full bg-info/10 text-info">
+                            <MapPin size={20} />
+                        </div>
+                        <div className="ml-3 sm:ml-4"> {/* Consistent margin */}
+                            <h2 className="text-sm font-medium text-neutral-500">Visits</h2>
+                            <p className="text-xl sm:text-2xl font-semibold text-neutral-900">{stats.today}</p>
+                        </div>
+                    </div>
+                </div>
                 {/* This Week Card */}
                 <div className="card bg-white p-4 shadow-sm border border-neutral-200">
                      <div className="flex items-center">

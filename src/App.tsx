@@ -84,6 +84,20 @@ function App() {
           
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        <a
+          href="https://yaksen.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="fixed bottom-2 right-4 p-2 flex items-center justify-center gap-2 custom-floating-button"
+          style={{zIndex: 1000}}
+        >
+          <img
+            src="https://res.cloudinary.com/das8wrfd1/image/upload/v1739760282/logo_owiqet.png"
+            alt="Yaksen Logo"
+            className="h-4 w-4"
+          />
+          <span className="text-xs font-medium">Made by YAKSEN</span>
+        </a>
       </Router>
     </AuthProvider>
   );
