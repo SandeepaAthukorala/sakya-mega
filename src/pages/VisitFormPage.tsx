@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Phone, User, FileText, Check, ChevronDown, Calendar } from 'lucide-react';
+import { MapPin, Phone, User, FileText, Check, ChevronDown, Calendar, Route } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 const VisitFormPage: React.FC = () => {
@@ -11,11 +11,14 @@ const VisitFormPage: React.FC = () => {
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [itemId, setItemId] = useState('');
+  const [routeId, setRouteId] = useState('');
+  const [routes, setRoutes] = useState<{ id: string; name: string; number: number }[]>([]);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState('');
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [location, setLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [address, setAddress] = useState('');
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -34,7 +37,8 @@ const VisitFormPage: React.FC = () => {
       (position) => {
         setLocation({
           lat: position.coords.latitude,
-          lng: position.coords.longitude
+          lng: position.coords.longitude,
+          address: address
         });
         setIsGettingLocation(false);
       },
@@ -82,6 +86,7 @@ const VisitFormPage: React.FC = () => {
           status: 'Pending',
           notes: notes || undefined,
           item_id: itemId || undefined,
+          route_id: routeId || undefined,
         })
         .single();
 
@@ -97,7 +102,9 @@ const VisitFormPage: React.FC = () => {
       setVisitDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setItemId('');
+      setRouteId('');
       setLocation(null);
+      setAddress('');
       
       setTimeout(() => {
         navigate('/visits');
@@ -111,7 +118,28 @@ const VisitFormPage: React.FC = () => {
 
   useEffect(() => {
     getCurrentLocation();
-  }, []);
+
+    const fetchRoutes = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('routes')
+          .select('id, name, number')
+          .eq('ref_id', user?.id);
+
+        if (error) {
+          console.error('Error fetching routes:', error);
+        }
+
+        setRoutes(data || []);
+      } catch (error) {
+        console.error('Error fetching routes:', error);
+      }
+    };
+
+    if (user) {
+      fetchRoutes();
+    }
+  }, [user]);
 
   if (showSuccess) {
     return (
@@ -198,7 +226,7 @@ const VisitFormPage: React.FC = () => {
 
             <div>
               <label htmlFor="itemId" className="block text-sm font-medium text-neutral-700 mb-1">
-                Item ID
+                Item ID (Optional)
               </label>
               <div className="relative">
                 <input
@@ -208,8 +236,34 @@ const VisitFormPage: React.FC = () => {
                   onChange={(e) => setItemId(e.target.value)}
                   className="input"
                   placeholder="Enter item ID"
-									required
                 />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="routeId" className="block text-sm font-medium text-neutral-700 mb-1">
+                Route (Optional)
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Route size={18} className="text-neutral-500" />
+                </div>
+                <select
+                  id="routeId"
+                  value={routeId}
+                  onChange={(e) => setRouteId(e.target.value)}
+                  className="input pl-10 pr-10 appearance-none"
+                >
+                  <option value="">Select Route</option>
+                  {routes.map((route) => (
+                    <option key={route.id} value={route.id}>
+                      {`${route.name} ${route.number}`}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <ChevronDown size={18} className="text-neutral-500" />
+                </div>
               </div>
             </div>
             
@@ -259,6 +313,21 @@ const VisitFormPage: React.FC = () => {
           
           <div className="space-y-4">
             <div>
+              <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-1">
+                Address
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="input"
+                  placeholder="Enter address"
+                />
+              </div>
+            </div>
+            <div>
               <button
                 type="button"
                 onClick={getCurrentLocation}
@@ -290,6 +359,9 @@ const VisitFormPage: React.FC = () => {
               {location && (
                 <div className="mt-3 p-3 bg-accent/5 rounded-md border border-accent/20">
                   <p className="text-sm font-medium">Location captured:</p>
+                  <p className="text-xs text-neutral-600 mt-1">
+                    Address: {location.address}
+                  </p>
                   <p className="text-xs text-neutral-600 mt-1">
                     Latitude: {location.lat.toFixed(6)}, Longitude: {location.lng.toFixed(6)}
                   </p>

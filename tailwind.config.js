@@ -4,18 +4,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#FFFFFF', // Light text color from "YAKSEN"
-        secondary: '#F0F0F0', // Consider a slightly darker shade if needed, otherwise keeping it light
+        primary: '#FFFFFF',
+        secondary: '#F0F0F0',
         accent: {
-          DEFAULT: '#ff4719', // Orange/Red color from the logo
-          light: '#ff6b3a',  // Lighter shade of accent
-          dark: '#c4310f',  // Darker shade of accent
+          DEFAULT: '#008080',
+          light: '#00A0A0',
+          dark: '#006060',
         },
-        success: '#34D399', // Keeping success color, may not be relevant in the original palette
-        warning: '#FBBF24', // Keeping warning color, may not be relevant in the original palette
-        error: '#EF4444',   // Keeping error color, may not be relevant in the original palette
+        success: '#34D399',
+        warning: '#FBBF24',
+        error: '#EF4444',
         neutral: {
-          100: '#F5F5F5',   // Lightest shade of the background, or a very light grey
+          100: '#F5F5F5',
           200: '#E5E5E5',
           300: '#D4D4D4',
           400: '#A3A3A3',
@@ -25,7 +25,6 @@ export default {
           800: '#262626',
           900: '#171717',
         },
-        background: '#12171f', // Dark background color
       },
       spacing: {
         '0.5': '4px',

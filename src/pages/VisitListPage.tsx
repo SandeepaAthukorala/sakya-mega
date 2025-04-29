@@ -262,9 +262,6 @@ const VisitListPage: React.FC = () => {
       <div>
         <div className="flex justify-between items-center mb-2">
           <p className="text-sm text-neutral-600">{filteredVisits.length} visits found</p>
-          <Link to="/map" className="btn btn-outline py-1 px-3 text-sm">
-            <Map size={16} className="mr-1" /> View on Map
-          </Link>
         </div>
 
         {isLoading && !visits.length ? ( // Show initial loading spinner only if no visits are loaded yet
@@ -306,10 +303,7 @@ const VisitListPage: React.FC = () => {
                            {visit.buyer_name || 'N/A'}
                         </h3>
                       )}
-
-                    </div>
-                     <div className="flex items-center text-sm text-neutral-600">
-										                       {editingVisitId === visit.id ? (
+                       {editingVisitId === visit.id ? (
                         <select
                           value={editedVisit.type}
                           onChange={(e) => setEditedVisit({ ...editedVisit, type: e.target.value })}
@@ -324,6 +318,7 @@ const VisitListPage: React.FC = () => {
                         </span>
                       )}
                     </div>
+
                      {/* Phone */}
                      <div className="flex items-center text-sm text-neutral-600">
                       <Phone size={14} className="mr-1.5 flex-shrink-0 text-neutral-500" />
