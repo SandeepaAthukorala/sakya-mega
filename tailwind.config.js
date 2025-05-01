@@ -25,6 +25,9 @@ export default {
           800: '#262626',
           900: '#171717',
         },
+        sampleBlue: '#3B82F6', // For 'Sample' type
+        sittuRose: '#F472B6',  // For 'Sittu' type
+        overGreen: '#A7F3D0', // For 'Over' type (light green)
       },
       spacing: {
         '0.5': '4px',

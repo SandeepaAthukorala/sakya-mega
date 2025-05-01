@@ -19,7 +19,7 @@ export interface Visit {
     address?: string;
   };
   date: string;
-  type: 'Delivery' | 'Collection';
+  type: 'Sample' | 'Sittu' | 'Over';
   status: 'Pending' | 'Completed' | 'Cancelled';
   notes?: string;
 }

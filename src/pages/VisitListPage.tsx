@@ -15,10 +15,11 @@ const VisitListPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const deliveryTypes: Visit['type'][] = ['Sample', 'Sittu', 'Over']; // Define the types
   const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
   // Extended editedVisit state to include buyer_name, phone, and notes
-  const [editedVisit, setEditedVisit] = useState<{
-    type: string;
+  const [editedVisit, setEditedVisit] = useState<{ // Use the type from src/types
+    type: Visit['type'];
     status: string;
     buyer_name: string;
     phone: string;
@@ -251,8 +252,9 @@ const VisitListPage: React.FC = () => {
                 className="input"
               >
                 <option value="all">All Types</option>
-                <option value="Delivery">Delivery</option>
-                <option value="Collection">Collection</option>
+                {deliveryTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -306,14 +308,19 @@ const VisitListPage: React.FC = () => {
                        {editingVisitId === visit.id ? (
                         <select
                           value={editedVisit.type}
-                          onChange={(e) => setEditedVisit({ ...editedVisit, type: e.target.value })}
+                          onChange={(e) => setEditedVisit({ ...editedVisit, type: e.target.value as Visit['type'] })}
                           className="input input-sm text-xs uppercase" // Consistent small input
                         >
-                          <option value="Delivery">Delivery</option>
-                          <option value="Collection">Collection</option>
+                          {deliveryTypes.map(type => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
                         </select>
                       ) : (
-                        <span className="text-xs uppercase px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700">
+                        <span className={`text-xs uppercase px-2 py-0.5 rounded-full 
+                          ${visit.type === 'Sample' ? 'bg-sampleBlue text-white' : 
+                            visit.type === 'Sittu' ? 'bg-sittuRose text-white' : 
+                            visit.type === 'Over' ? 'bg-overGreen text-neutral-800' : // Use darker text for light green
+                            'bg-neutral-100 text-neutral-700'}`}>
                           {visit.type}
                         </span>
                       )}

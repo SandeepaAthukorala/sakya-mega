@@ -189,8 +189,15 @@ const DashboardPage: React.FC = () => {
                     <p className="text-sm text-neutral-600">
                       {visit.location.address || 'No address provided'}
                     </p>
-                    <p className="text-xs text-neutral-500 mt-1">
-                      {visit.type} • {visit.phone}
+                    <p className="text-xs text-neutral-500 mt-1 flex items-center gap-1">
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium 
+                        ${visit.type === 'Sample' ? 'bg-sampleBlue text-white' : 
+                          visit.type === 'Sittu' ? 'bg-sittuRose text-white' : 
+                          visit.type === 'Over' ? 'bg-overGreen text-neutral-800' : 
+                          'bg-neutral-100 text-neutral-700'}`}>
+                        {visit.type}
+                      </span>
+                       • {visit.phone}
                     </p>
                   </div>
                   <div className="flex flex-col items-end">

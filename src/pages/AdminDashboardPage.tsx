@@ -6,7 +6,10 @@ import {
 } from 'lucide-react';
 import { Visit, User as UserType } from '../types';
 import { supabase } from '../supabaseClient';
-import { format, parseISO, startOfWeek, endOfWeek } from 'date-fns';
+import { format, parseISO, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
+
+// Define possible active filter states
+type ActiveFilter = 'Today' | 'This Week' | 'All' | 'Custom';
 
 const AdminDashboardPage: React.FC = () => {
     // ... (Keep all the state, effects, and handlers from the previous version) ...
@@ -14,15 +17,14 @@ const AdminDashboardPage: React.FC = () => {
     const [visits, setVisits] = useState<Visit[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showFilters, setShowFilters] = useState(false);
-    const [dateRange, setDateRange] = useState<{ start: string, end: string }>({
-        start: new Date().toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0],
-    });
+    const [dateRange, setDateRange] = useState<{ start: string, end: string }>({ start: '', end: '' }); // Initialize empty
     const [sortField, setSortField] = useState<string>('date');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
     const [users, setUsers] = useState<UserType[]>([]);
     const [refs, setRefs] = useState<UserType[]>([]);
     const [isDeletingRef, setIsDeletingRef] = useState<string | null>(null);
+    const deliveryTypes: Visit['type'][] = ['Sample', 'Sittu', 'Over']; // Define the types
+    const [activeFilter, setActiveFilter] = useState<ActiveFilter>('Today'); // Add state for active filter button
 
     const [editingVisitId, setEditingVisitId] = useState<string | null>(null);
     const [editedVisitData, setEditedVisitData] = useState<Partial<Visit> | null>(null);
@@ -33,7 +35,9 @@ const AdminDashboardPage: React.FC = () => {
     const todayString = todayDate.toISOString().split('T')[0];
 
     useEffect(() => {
+        // Set initial date range to today and active filter
         setDateRange({ start: todayString, end: todayString });
+        setActiveFilter('Today');
 
         const fetchVisits = async () => {
             setIsLoading(true);
@@ -77,9 +81,24 @@ const AdminDashboardPage: React.FC = () => {
     }, []);
 
     const filteredVisits = visits.filter(visit => {
+        // If 'All' is active, don't filter by date
+        if (activeFilter === 'All') {
+            return true;
+        }
+        // Otherwise, filter by date range
         const visitDate = visit.date.split('T')[0];
-        const isInDateRange = visitDate >= dateRange.start && visitDate <= dateRange.end;
-        return isInDateRange;
+        // Ensure dateRange has valid dates before comparing
+        if (!dateRange.start || !dateRange.end) return false;
+        try {
+            const start = parseISO(dateRange.start);
+            const end = parseISO(dateRange.end);
+            const current = parseISO(visitDate);
+            // Use isWithinInterval for correct date range checking
+            return isWithinInterval(current, { start, end });
+        } catch (e) {
+            console.warn("Error parsing dates for filtering:", dateRange, visitDate, e);
+            return false; // Exclude if dates are invalid
+        }
     }).sort((a, b) => {
         const fieldA = a[sortField as keyof Visit];
         const fieldB = b[sortField as keyof Visit];
@@ -110,10 +129,29 @@ const AdminDashboardPage: React.FC = () => {
         setSortDirection(newDirection);
     };
 
-    const setThisWeekRange = () => setDateRange({ start: thisWeekStart, end: thisWeekEnd });
-    const setTodayRange = () => setDateRange({ start: todayString, end: todayString });
+    const setThisWeekRange = () => {
+        setDateRange({ start: thisWeekStart, end: thisWeekEnd });
+        setActiveFilter('This Week');
+    };
+    const setTodayRange = () => {
+        setDateRange({ start: todayString, end: todayString });
+        setActiveFilter('Today');
+    };
+
+    // Handler for the 'All' button
+    const handleShowAllClick = () => {
+        setActiveFilter('All');
+        // Optionally clear date range or keep it as is
+        // setDateRange({ start: '', end: '' }); // Uncomment to clear dates when 'All' is clicked
+    };
+
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'start' | 'end') => {
+        setDateRange(prev => ({ ...prev, [type]: e.target.value }));
+        setActiveFilter('Custom'); // Set to custom when date inputs are changed
+    };
 
     const resetFilters = () => {
+        setActiveFilter('Today'); // Reset to Today
         setDateRange({ start: todayString, end: todayString });
         setSortField('date');
         setSortDirection('desc');
@@ -266,11 +304,16 @@ const AdminDashboardPage: React.FC = () => {
                             className="select select-bordered select-xs sm:select-sm w-full"
                         >
                             <option value="" disabled>Type</option>
-                            <option value="Delivery">Delivery</option>
-                            <option value="Collection">Collection</option>
+                            {deliveryTypes.map(type => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
                         </select>
                     ) : (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-700 whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap
+                          ${visit.type === 'Sample' ? 'bg-sampleBlue text-white' : 
+                            visit.type === 'Sittu' ? 'bg-sittuRose text-white' : 
+                            visit.type === 'Over' ? 'bg-overGreen text-neutral-800' : 
+                            'bg-neutral-100 text-neutral-700'}`}>
                             {visit.type}
                         </span>
                     )}
@@ -550,8 +593,10 @@ const AdminDashboardPage: React.FC = () => {
                                     />
                                 </div>
                                 <div className="flex space-x-2 mt-2">
-                                    <button onClick={setTodayRange} className="btn btn-xs btn-outline">Today</button>
-                                    <button onClick={setThisWeekRange} className="btn btn-xs btn-outline">This Week</button>
+                                    <button onClick={setTodayRange} className={`btn btn-sm btn-outline ${activeFilter === 'Today' ? 'btn-active btn-accent' : 'border-neutral-300 text-neutral-700 hover:bg-neutral-100'}`}>Today</button>
+                                    <button onClick={setThisWeekRange} className={`btn btn-sm btn-outline ${activeFilter === 'This Week' ? 'btn-active btn-accent' : 'border-neutral-300 text-neutral-700 hover:bg-neutral-100'}`}>This Week</button>
+                                    {/* Add the 'All' button */}
+                                    <button onClick={handleShowAllClick} className={`btn btn-sm btn-outline ${activeFilter === 'All' ? 'btn-active btn-accent' : 'border-neutral-300 text-neutral-700 hover:bg-neutral-100'}`}>All</button>
                                 </div>
                             </div>
                         </div>

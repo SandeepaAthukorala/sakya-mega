@@ -71,7 +71,7 @@ const customStyles = {
 const VisitFormPage: React.FC = () => {
   const [buyerName, setBuyerName] = useState('');
   const [phone, setPhone] = useState('');
-  const [visitType, setVisitType] = useState<'Delivery' | 'Collection'>('Delivery');
+  const [visitType, setVisitType] = useState<'Sample' | 'Sittu' | 'Over'>('Sample');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [itemId, setItemId] = useState('');
@@ -176,7 +176,7 @@ const VisitFormPage: React.FC = () => {
       setShowSuccess(true);
       setBuyerName('');
       setPhone('');
-      setVisitType('Delivery');
+      setVisitType('Sample');
       setVisitDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setItemId('');
@@ -407,8 +407,9 @@ const VisitFormPage: React.FC = () => {
                   className="input pr-10 appearance-none" // Use standard input class
                   required
                 >
-                  <option value="Delivery">Delivery</option>
-                  <option value="Collection">Collection</option>
+                  <option value="Sample">Sample</option>
+                  <option value="Sittu">Sittu</option>
+                  <option value="Over">Over</option>
                 </select>
                 {/* No z-index needed here as it's part of standard select */}
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
