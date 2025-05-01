@@ -134,7 +134,8 @@ const VisitListPage: React.FC = () => {
         type: editedVisit.type,
         status: editedVisit.status,
         buyer_name: editedVisit.buyer_name,
-        phone: editedVisit.phone,
+        mobile_phone: editedVisit.mobile_phone,
+          land_phone: editedVisit.land_phone,
         notes: editedVisit.notes, // Send null if empty string, or adjust based on DB constraints
       };
 
@@ -168,7 +169,8 @@ const VisitListPage: React.FC = () => {
       status: visit.status,
       // Use buyer_name consistently, handle potential null/undefined
       buyer_name: visit.buyer_name || '',
-      phone: visit.phone || '',
+      mobile_phone: visit.mobile_phone || '',
+      land_phone: visit.land_phone || '',
       notes: visit.notes || '',
     });
   };
@@ -338,7 +340,10 @@ const VisitListPage: React.FC = () => {
                           className="input input-sm flex-grow"
                         />
                       ) : (
-                        <span>{visit.phone || 'No phone'}</span>
+                        <div className="space-y-1">
+                          <span>{visit.mobile_phone || 'No mobile'}</span>
+                          <span className="text-xs text-neutral-500">{visit.land_phone || 'No landline'}</span>
+                        </div>
                       )}
                     </div>
 

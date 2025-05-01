@@ -70,7 +70,8 @@ const customStyles = {
 
 const VisitFormPage: React.FC = () => {
   const [buyerName, setBuyerName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [mobile_phone, setMobilePhone] = useState('');
+const [land_phone, setLandPhone] = useState('');
   const [visitType, setVisitType] = useState<'Sample' | 'Sittu' | 'Over'>('Sample');
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -156,7 +157,8 @@ const VisitFormPage: React.FC = () => {
         .insert({
           ref_id: user?.id,
           buyer_name: buyerName,
-          phone: phone,
+          mobile_phone: mobile_phone,
+          land_phone: land_phone,
           location: finalLocation,
           date: new Date(visitDate).toISOString(),
           type: visitType,
@@ -322,8 +324,8 @@ const VisitFormPage: React.FC = () => {
 
             {/* Phone Number */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-neutral-700 mb-1">
-                Phone Number
+              <label htmlFor="mobile_phone" className="block text-sm font-medium text-neutral-700 mb-1">
+                Mobile Phone
               </label>
               <div className="relative">
                 {/* Increased z-index for icon */}
@@ -332,12 +334,32 @@ const VisitFormPage: React.FC = () => {
                 </div>
                 <input
                   type="tel"
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  id="mobile_phone"
+                  value={mobile_phone}
+                  onChange={(e) => setMobilePhone(e.target.value)}
                   className="input pl-10" // Ensure input class is applied
                   required
-                  placeholder="Enter buyer's phone number"
+                  placeholder="Enter mobile number"
+                />
+              </div>
+            </div>
+
+            {/* Land Phone */}
+            <div>
+              <label htmlFor="land_phone" className="block text-sm font-medium text-neutral-700 mb-1">
+                Land Phone
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                  <Phone size={18} className="text-neutral-500" />
+                </div>
+                <input
+                  type="tel"
+                  id="land_phone"
+                  value={land_phone}
+                  onChange={(e) => setLandPhone(e.target.value)}
+                  className="input pl-10"
+                  placeholder="Enter landline number"
                 />
               </div>
             </div>

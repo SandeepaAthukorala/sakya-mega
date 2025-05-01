@@ -633,7 +633,7 @@ const AdminDashboardPage: React.FC = () => {
                                         <th className="px-2 py-2 sm:px-4 sm:py-3 cursor-pointer hover:bg-neutral-100" onClick={() => handleSort('buyer_name')}>
                                             <div className="flex items-center">Buyer {sortField === 'buyer_name' && (sortDirection === 'asc' ? <ChevronUp size={14} className="ml-1" /> : <ChevronDown size={14} className="ml-1" />)}</div>
                                         </th>
-                                        <th className="px-2 py-2 sm:px-4 sm:py-3 hidden md:table-cell">Phone</th>
+                                        <th className="px-2 py-2 sm:px-4 sm:py-3 hidden md:table-cell">Contact Numbers</th>
                                         <th className="px-2 py-2 sm:px-4 sm:py-3 hidden lg:table-cell">Type</th>
                                         <th className="px-2 py-2 sm:px-4 sm:py-3 hidden lg:table-cell">Reference</th>
                                         <th className="px-2 py-2 sm:px-4 sm:py-3 cursor-pointer hover:bg-neutral-100" onClick={() => handleSort('status')}>
