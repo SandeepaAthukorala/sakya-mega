@@ -2,568 +2,667 @@
 // npm install react-select
 
 import React, { useState, useEffect } from 'react';
-import Select, { createFilter } from 'react-select'; // Import createFilter
+import Select, { createFilter, SingleValue } from 'react-select'; // Use SingleValue for the item selector
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Phone, User, FileText, Check, ChevronDown, Calendar, Route, Package } from 'lucide-react';
+import { MapPin, Phone, User, FileText, Check, ChevronDown, Calendar, Route, Package, Plus, Trash2 } from 'lucide-react'; // Added Plus, Trash2
 import { supabase } from '../supabaseClient';
 
-// --- Custom Filter for react-select (triggers after 2 chars) ---
+// --- Custom Filter for react-select ---
 const filterConfig = {
-  ignoreCase: true,
-  matchFrom: 'any', // 'start' or 'any'
-  trim: true,
+    ignoreCase: true,
+    matchFrom: 'any', // 'start' or 'any'
+    trim: true,
 };
 
-const customFilter = (option, rawInput) => {
-  // Directly apply the filtering logic, regardless of input length
-  return createFilter(filterConfig)(option, rawInput);
+const customFilter = (option: any, rawInput: string) => {
+    return createFilter(filterConfig)(option, rawInput);
 };
 // --- End Custom Filter ---
 
 
 // Add custom styles for react-select
 const customStyles = {
-  control: (provided, state) => ({ // Added state parameter
-    ...provided,
-    minHeight: '42px', // Increased minHeight slightly
-    paddingLeft: '40px', // Keep padding for the icon
-    borderColor: state.isFocused ? '#a5b4fc' : '#d1d5db', // Tailwind indigo-300 for focus, neutral-300 otherwise
-    '&:hover': { borderColor: '#d1d5db' },
-    boxShadow: state.isFocused ? '0 0 0 1px #a5b4fc' : 'none', // Optional: Add focus ring similar to inputs
-    borderRadius: '0.375rem', // Tailwind rounded-md
-  }),
-  input: (provided) => ({
-    ...provided,
-    // Removed margin reset - let control padding handle it
-    paddingLeft: '0px',
-    marginLeft: '0px', // Ensure input text starts correctly after padding
-    color: '#1f2937', // Tailwind text-gray-800
-  }),
-  valueContainer: (provided) => ({
-    ...provided,
-    padding: '2px 8px', // Standard padding
-    // Removed explicit paddingLeft override here, rely on control's padding
-  }),
-  placeholder: (provided) => ({
-    ...provided,
-    // Removed margin reset
-    color: '#6b7280', // Tailwind text-neutral-500
-  }),
-  singleValue: (provided) => ({
-      ...provided,
-      // Removed margin reset
-      color: '#1f2937', // Tailwind text-gray-800
-  }),
-  dropdownIndicator: (provided) => ({
-    ...provided,
-    padding: '8px',
-    color: '#6b7280',
-  }),
-  indicatorSeparator: () => ({ display: 'none' }),
-  menu: (provided) => ({ // Ensure menu appears above other elements
-    ...provided,
-    zIndex: 50, // Higher z-index for the dropdown menu
-  }),
+    control: (provided: any, state: any) => ({
+        ...provided,
+        minHeight: '42px',
+        paddingLeft: '40px',
+        borderColor: state.isFocused ? '#a5b4fc' : '#d1d5db',
+        '&:hover': { borderColor: '#d1d5db' },
+        boxShadow: state.isFocused ? '0 0 0 1px #a5b4fc' : 'none',
+        borderRadius: '0.375rem',
+    }),
+    input: (provided: any) => ({
+        ...provided,
+        paddingLeft: '0px',
+        marginLeft: '0px',
+        color: '#1f2937',
+    }),
+    valueContainer: (provided: any) => ({
+        ...provided,
+        padding: '2px 8px',
+    }),
+    placeholder: (provided: any) => ({
+        ...provided,
+        color: '#6b7280',
+    }),
+    singleValue: (provided: any) => ({
+        ...provided,
+        color: '#1f2937',
+    }),
+    // multiValue styles removed as item selector is now single-select for adding
+    dropdownIndicator: (provided: any) => ({
+        ...provided,
+        padding: '8px',
+        color: '#6b7280',
+    }),
+    indicatorSeparator: () => ({ display: 'none' }),
+    menu: (provided: any) => ({
+        ...provided,
+        zIndex: 50,
+    }),
 };
+
+// Define a type for the select options
+interface SelectOption {
+    value: string; // Typically the ID
+    label: string; // Display text
+}
 
 
 const VisitFormPage: React.FC = () => {
-  const [buyerName, setBuyerName] = useState('');
-  const [mobile_phone, setMobilePhone] = useState('');
-const [land_phone, setLandPhone] = useState('');
-  const [visitType, setVisitType] = useState<'Sample' | 'Sittu' | 'Over'>('Sample');
-  const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
-  const [notes, setNotes] = useState('');
-  const [itemId, setItemId] = useState('');
-  const [items, setItems] = useState<{ id: string; item_name: string; item_number: number }[]>([]);
-  const [routeId, setRouteId] = useState('');
-  const [routes, setRoutes] = useState<{ id: string; name: string; number: number }[]>([]);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationError, setLocationError] = useState('');
-  const [location, setLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [address, setAddress] = useState('');
-  const [formError, setFormError] = useState('');
+    const [buyerName, setBuyerName] = useState('');
+    const [mobile_phone, setMobilePhone] = useState('');
+    const [land_phone, setLandPhone] = useState('');
+    const [visitType, setVisitType] = useState<'Sample' | 'Sittu' | 'Over'>('Sample');
+    const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
+    const [notes, setNotes] = useState('');
 
-  const { user } = useAuth();
-  const navigate = useNavigate();
+    // --- Item Selection States ---
+    const [items, setItems] = useState<{ id: string; item_name: string; item_number: number }[]>([]);
+    const [currentItemToAdd, setCurrentItemToAdd] = useState<SelectOption | null>(null); // Item currently selected in the dropdown
+    const [addedItems, setAddedItems] = useState<SelectOption[]>([]); // List of items added (can have duplicates)
+    // --- End Item Selection States ---
 
-  // --- getCurrentLocation and handleSubmit remain the same ---
-   const getCurrentLocation = () => {
-    setIsGettingLocation(true);
-    setLocationError('');
-    setFormError(''); // Clear form error when getting location
+    const [routeId, setRouteId] = useState(''); // Route remains single selection
+    const [routes, setRoutes] = useState<{ id: string; name: string; number: number }[]>([]);
 
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported by your browser');
-      setIsGettingLocation(false);
-      return;
-    }
+    const [isGettingLocation, setIsGettingLocation] = useState(false);
+    const [locationError, setLocationError] = useState('');
+    // --- Location state only stores lat/lng ---
+    const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
+    const [address, setAddress] = useState(''); // Separate state for address string
+    // --- End Location state ---
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-          address: address // Use the manually entered address for now
-        });
-        setIsGettingLocation(false);
-      },
-      (error) => {
-        let errorMsg = 'Failed to get location';
-        switch(error.code) {
-          case error.PERMISSION_DENIED: errorMsg = 'Location access denied. Please enable location services.'; break;
-          case error.POSITION_UNAVAILABLE: errorMsg = 'Location information is unavailable.'; break;
-          case error.TIMEOUT: errorMsg = 'Location request timed out.'; break;
-        }
-        setLocationError(errorMsg);
-        setIsGettingLocation(false);
-      },
-      { enableHighAccuracy: true }
-    );
-  };
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [formError, setFormError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    setLocationError('');
+    const { user } = useAuth();
+    const navigate = useNavigate();
 
-    if (!location) {
-      setLocationError('Please get your current geo-coordinates first');
-      return;
-    }
-     if (!address) { // Also check if address is entered
-        setFormError('Please enter the address');
-        return;
-     }
-    if (!itemId) {
-      setFormError('Please select an item');
-      return;
-    }
-    if (!routeId) {
-      setFormError('Please select a route');
-      return;
-    }
+    // --- Fetch initial data (items and routes) ---
+    useEffect(() => {
+        const fetchRoutes = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('routes')
+                    .select('id, name, number'); // Fetch all routes for now
 
-    setIsSubmitting(true);
+                if (error) {
+                    console.error('Error fetching routes:', error);
+                    setFormError('Failed to load routes');
+                } else {
+                    setRoutes(data || []);
+                }
+            } catch (error) {
+                console.error('Error fetching routes:', error);
+                setFormError('An error occurred while loading routes');
+            }
+        };
 
-    try {
-      const finalLocation = { ...location, address: address };
+        const fetchItems = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('items')
+                    .select('id, item_name, item_number');
 
-      const { error } = await supabase
-        .from('visits')
-        .insert({
-          ref_id: user?.id,
-          buyer_name: buyerName,
-          mobile_phone: mobile_phone,
-          land_phone: land_phone,
-          location: finalLocation,
-          date: new Date(visitDate).toISOString(),
-          type: visitType,
-          status: 'Pending',
-          notes: notes || undefined,
-          item_id: itemId,
-          route_id: routeId,
-        })
-        .single();
+                if (error) {
+                    console.error('Error fetching items:', error);
+                    setFormError('Failed to load items');
+                } else {
+                    setItems(data || []);
+                }
+            } catch (error) {
+                console.error('Error fetching items:', error);
+                setFormError('An error occurred while loading items');
+            }
+        };
 
-      if (error) {
-        console.error('Error saving visit:', error);
-        setFormError(`Failed to save visit: ${error.message}`);
-        throw error;
-      }
+        fetchRoutes();
+        fetchItems();
+    }, []); // Fetch on component mount
 
-      setShowSuccess(true);
-      setBuyerName('');
-      setPhone('');
-      setVisitType('Sample');
-      setVisitDate(new Date().toISOString().split('T')[0]);
-      setNotes('');
-      setItemId('');
-      setRouteId('');
-      setLocation(null);
-      setAddress('');
-      setFormError('');
-      setLocationError('');
+    // --- Map fetched data to options for react-select ---
+    const itemOptions: SelectOption[] = items.map(item => ({
+        value: item.id, // Use item ID as the value
+        label: `${item.item_name} (${item.item_number})`
+    }));
 
-      setTimeout(() => {
-        navigate('/visits');
-      }, 2000);
-    } catch (error: any) {
-      console.error('Error in handleSubmit:', error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-  // --- End unchanged functions ---
+    const routeOptions: SelectOption[] = routes.map(route => ({
+        value: route.id,
+        label: `${route.name} (${route.number})`
+    }));
 
-  useEffect(() => {
-    const fetchRoutes = async () => {
-      if (!user) return;
-      try {
-        const { data, error } = await supabase
-          .from('routes')
-          .select('id, name, number')
-          .eq('ref_id', user.id);
-
-        if (error) {
-          console.error('Error fetching routes:', error);
-          setFormError('Failed to load routes');
+    // --- Function to add the currently selected item to the addedItems list ---
+    const handleAddItem = () => {
+        if (currentItemToAdd) {
+            setAddedItems(prevItems => [...prevItems, currentItemToAdd]);
+            setCurrentItemToAdd(null); // Clear the selection in the dropdown after adding
+            setFormError(''); // Clear error if adding was successful
         } else {
-          setRoutes(data || []);
+            setFormError("Please select an item to add."); // Inform user if nothing selected
         }
-      } catch (error) {
-        console.error('Error fetching routes:', error);
-        setFormError('An error occurred while loading routes');
-      }
     };
 
-    const fetchItems = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('items')
-          .select('id, item_name, item_number');
-
-        if (error) {
-          console.error('Error fetching items:', error);
-          setFormError('Failed to load items');
-        } else {
-          setItems(data || []);
-        }
-      } catch (error) {
-        console.error('Error fetching items:', error);
-        setFormError('An error occurred while loading items');
-      }
+    // --- Function to remove an item from the addedItems list by its index ---
+    const handleRemoveItem = (indexToRemove: number) => {
+        setAddedItems(prevItems => prevItems.filter((_, index) => index !== indexToRemove));
     };
 
-    if (user) {
-      fetchRoutes();
-      fetchItems();
-    }
-  }, [user]);
 
-  const itemOptions = items.map(item => ({
-    value: item.id,
-    label: `${item.item_name} ${item.item_number}`
-  }));
+    // --- getCurrentLocation (updated to only set lat/lng) ---
+    const getCurrentLocation = () => {
+        setIsGettingLocation(true);
+        setLocationError('');
+        setFormError('');
 
-  const routeOptions = routes.map(route => ({
-    value: route.id,
-    label: `${route.name} ${route.number}`
-  }));
+        if (!navigator.geolocation) {
+            setLocationError('Geolocation is not supported by your browser');
+            setIsGettingLocation(false);
+            return;
+        }
 
-  if (showSuccess) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                // Only set lat/lng in the location state
+                setLocation({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                });
+                setIsGettingLocation(false);
+            },
+            (error) => {
+                let errorMsg = 'Failed to get location';
+                switch (error.code) {
+                    case error.PERMISSION_DENIED: errorMsg = 'Location access denied. Please enable location services.'; break;
+                    case error.POSITION_UNAVAILABLE: errorMsg = 'Location information is unavailable.'; break;
+                    case error.TIMEOUT: errorMsg = 'Location request timed out.'; break;
+                }
+                setLocationError(errorMsg);
+                setIsGettingLocation(false);
+            },
+            { enableHighAccuracy: true }
+        );
+    };
+
+    // --- handleSubmit (updated for separate location/address and multiple items) ---
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setFormError('');
+        setLocationError('');
+
+        // Validation Checks
+        if (!location) {
+            setLocationError('Please get your current geo-coordinates first');
+            return;
+        }
+        if (!address) {
+            setFormError('Please enter the address');
+            return;
+        }
+        if (addedItems.length === 0) { // Check if any items have been added
+            setFormError('Please add at least one item to the visit');
+            return;
+        }
+        if (!routeId) {
+            setFormError('Please select a route');
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            // Extract IDs from the addedItems list
+            // Your 'item_id' column is text[], so sending IDs (UUIDs/text) is correct.
+            const itemIds = addedItems.map(item => item.value);
+
+            const visitData = {
+                ref_id: user?.id,
+                buyer_name: buyerName,
+                mobile_phone: mobile_phone,
+                land_phone: land_phone || null, // Send null if empty
+                // Send location object {lat, lng} to jsonb column
+                location: { lat: location.lat, lng: location.lng },
+                // Send address string to text column
+                address: address,
+                date: new Date(visitDate).toISOString(),
+                type: visitType,
+                status: 'Pending',
+                notes: notes || null, // Send null if empty
+                item_id: itemIds, // Send array of item IDs
+                route_id: routeId,
+            };
+
+            console.log("Submitting Visit Data:", visitData); // Log data before sending
+
+            const { data, error } = await supabase
+                .from('visits')
+                .insert(visitData)
+                .select() // Select the inserted row to confirm
+                .single();
+
+            if (error) {
+                console.error('Error saving visit:', error);
+                setFormError(`Failed to save visit: ${error.message}`);
+                throw error; // Re-throw to be caught by outer catch
+            }
+
+            console.log("Visit Saved Successfully:", data);
+            setShowSuccess(true);
+
+            // Reset form fields
+            setBuyerName('');
+            setMobilePhone('');
+            setLandPhone('');
+            setVisitType('Sample');
+            setVisitDate(new Date().toISOString().split('T')[0]);
+            setNotes('');
+            setCurrentItemToAdd(null); // Reset item selector
+            setAddedItems([]);       // Reset added items list
+            setRouteId('');
+            setLocation(null);
+            setAddress('');
+            setFormError('');
+            setLocationError('');
+
+            setTimeout(() => {
+                navigate('/visits');
+            }, 2000);
+
+        } catch (error: any) {
+            // Error logging/setting happens within the try block if it's a Supabase error
+            if (!formError) { // Set a generic error if not already set
+                console.error('Error in handleSubmit:', error.message);
+                setFormError('An unexpected error occurred while saving the visit.');
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
     // --- Success message remains the same ---
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fade-in">
-        <div className="bg-success/10 p-4 rounded-full mb-4">
-          <Check size={48} className="text-success" />
-        </div>
-        <h2 className="text-2xl font-bold mb-2">Visit Recorded!</h2>
-        <p className="text-neutral-600 text-center mb-6">
-          The visit has been successfully recorded.
-        </p>
-        <p className="text-sm text-neutral-500">Redirecting to visits list...</p>
-      </div>
-    );
+    if (showSuccess) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fade-in">
+                <div className="bg-green-100 p-4 rounded-full mb-4"> {/* Adjusted background color */}
+                    <Check size={48} className="text-green-600" /> {/* Adjusted icon color */}
+                </div>
+                <h2 className="text-2xl font-bold mb-2 text-gray-800">Visit Recorded!</h2> {/* Adjusted text color */}
+                <p className="text-neutral-600 text-center mb-6">
+                    The visit has been successfully recorded.
+                </p>
+                <p className="text-sm text-neutral-500">Redirecting to visits list...</p>
+            </div>
+        );
+    }
     // --- End Success message ---
-  }
 
-  return (
-    <div className="max-w-xl mx-auto py-6 animate-fade-in">
-      <h1 className="text-2xl font-bold mb-6">Record New Visit</h1>
+    return (
+        <div className="max-w-xl mx-auto py-6 animate-fade-in">
+            <h1 className="text-2xl font-bold mb-6 text-gray-800">Record New Visit</h1> {/* Adjusted text color */}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="card p-6">
-          <h2 className="text-lg font-medium mb-4">Visit Details</h2>
-          <div className="space-y-4">
-            {/* Visit Date */}
-            <div>
-              <label htmlFor="visitDate" className="block text-sm font-medium text-neutral-700 mb-1">
-                Visit Date
-              </label>
-              <div className="relative">
-                 {/* Increased z-index for icon */}
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                  <Calendar size={18} className="text-neutral-500" />
-                </div>
-                <input
-                  type="date"
-                  id="visitDate"
-                  value={visitDate}
-                  onChange={(e) => setVisitDate(e.target.value)}
-                  className="input pl-10" // Ensure input class is applied
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Buyer Name */}
-            <div>
-              <label htmlFor="buyerName" className="block text-sm font-medium text-neutral-700 mb-1">
-                Buyer Name
-              </label>
-              <div className="relative">
-                 {/* Increased z-index for icon */}
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                  <User size={18} className="text-neutral-500" />
-                </div>
-                <input
-                  type="text"
-                  id="buyerName"
-                  value={buyerName}
-                  onChange={(e) => setBuyerName(e.target.value)}
-                  className="input pl-10" // Ensure input class is applied
-                  required
-                  placeholder="Enter buyer's full name"
-                />
-              </div>
-            </div>
-
-            {/* Phone Number */}
-            <div>
-              <label htmlFor="mobile_phone" className="block text-sm font-medium text-neutral-700 mb-1">
-                Mobile Phone
-              </label>
-              <div className="relative">
-                {/* Increased z-index for icon */}
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                  <Phone size={18} className="text-neutral-500" />
-                </div>
-                <input
-                  type="tel"
-                  id="mobile_phone"
-                  value={mobile_phone}
-                  onChange={(e) => setMobilePhone(e.target.value)}
-                  className="input pl-10" // Ensure input class is applied
-                  required
-                  placeholder="Enter mobile number"
-                />
-              </div>
-            </div>
-
-            {/* Land Phone */}
-            <div>
-              <label htmlFor="land_phone" className="block text-sm font-medium text-neutral-700 mb-1">
-                Land Phone
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                  <Phone size={18} className="text-neutral-500" />
-                </div>
-                <input
-                  type="tel"
-                  id="land_phone"
-                  value={land_phone}
-                  onChange={(e) => setLandPhone(e.target.value)}
-                  className="input pl-10"
-                  placeholder="Enter landline number"
-                />
-              </div>
-            </div>
-
-            {/* Item Selector (react-select) */}
-            <div>
-              <label htmlFor="itemId" className="block text-sm font-medium text-neutral-700 mb-1">
-                Item
-              </label>
-              <div className="relative">
-                {/* Increased z-index for icon */}
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                  <Package size={18} className="text-neutral-500" />
-                </div>
-                <Select
-                  inputId="itemId"
-                  options={itemOptions}
-                  value={itemOptions.find(option => option.value === itemId)}
-                  onChange={(selectedOption) => setItemId(selectedOption?.value || '')}
-                  placeholder="Select Item"
-                  styles={customStyles}
-                  isSearchable
-                  required
-                  filterOption={customFilter} // Added custom filter
-                  className="react-select-container"
-                  classNamePrefix="react-select"
-                />
-              </div>
-            </div>
-
-            {/* Route Selector (react-select) */}
-            <div>
-              <label htmlFor="routeId" className="block text-sm font-medium text-neutral-700 mb-1">
-                Route
-              </label>
-              <div className="relative">
-                {/* Increased z-index for icon */}
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                  <Route size={18} className="text-neutral-500" />
-                </div>
-                <Select
-                  inputId="routeId"
-                  options={routeOptions}
-                  value={routeOptions.find(option => option.value === routeId)}
-                  onChange={(selectedOption) => setRouteId(selectedOption?.value || '')}
-                  placeholder="Select Route"
-                  styles={customStyles}
-                  isSearchable
-                  required
-                  filterOption={customFilter} // Added custom filter
-                  className="react-select-container"
-                  classNamePrefix="react-select"
-                />
-              </div>
-            </div>
-
-            {/* Visit Type */}
-            <div>
-              <label htmlFor="visitType" className="block text-sm font-medium text-neutral-700 mb-1">
-                Visit Type
-              </label>
-              <div className="relative">
-                <select
-                  id="visitType"
-                  value={visitType}
-                  onChange={(e) => setVisitType(e.target.value as 'Delivery' | 'Collection')}
-                  className="input pr-10 appearance-none" // Use standard input class
-                  required
-                >
-                  <option value="Sample">Sample</option>
-                  <option value="Sittu">Sittu</option>
-                  <option value="Over">Over</option>
-                </select>
-                {/* No z-index needed here as it's part of standard select */}
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <ChevronDown size={18} className="text-neutral-500" />
-                </div>
-              </div>
-            </div>
-
-            {/* Notes */}
-            <div>
-              <label htmlFor="notes" className="block text-sm font-medium text-neutral-700 mb-1">
-                Notes (Optional)
-              </label>
-              <div className="relative">
-                {/* Increased z-index for icon */}
-                <div className="absolute top-3 left-3 pointer-events-none z-20">
-                  <FileText size={18} className="text-neutral-500" />
-                </div>
-                <textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="input pl-10 min-h-[100px]" // Ensure input class & padding
-                  placeholder="Add any special instructions or notes"
-                />
-              </div>
-            </div>
-
-            {/* Display Form Error */}
+            {/* Display General Form Error */}
             {formError && (
-                <p className="text-error text-sm mt-2">{formError}</p>
-            )}
-
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <h2 className="text-lg font-medium mb-4">Location</h2>
-          <div className="space-y-4">
-            {/* Address Input */}
-             <div>
-                <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-1">
-                    Address
-                </label>
-                <div className="relative">
-                    {/* Example Icon (Optional) */}
-                    {/* <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
-                      <MapPin size={18} className="text-neutral-500" />
-                    </div> */}
-                    <input
-                      type="text"
-                      id="address"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      className="input" // Use input class, add pl-10 if using icon
-                      placeholder="Enter visit address"
-                      required // Address is required
-                    />
-                 </div>
-            </div>
-
-            {/* Get Location Button and Display */}
-            <div>
-              <button
-                type="button"
-                onClick={getCurrentLocation}
-                disabled={isGettingLocation}
-                className="btn btn-secondary w-full"
-              >
-                {isGettingLocation ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-accent mr-2"></div>
-                    Getting coordinates...
-                  </>
-                ) : location ? (
-                  <>
-                    <MapPin size={18} className="mr-2 text-accent" />
-                    Update Geo-Coordinates
-                  </>
-                ) : (
-                  <>
-                    <MapPin size={18} className="mr-2" />
-                    Get Current Geo-Coordinates
-                  </>
-                )}
-              </button>
-
-              {/* Display Location Error */}
-              {locationError && (
-                <p className="text-error text-sm mt-2">{locationError}</p>
-              )}
-
-              {/* Display Captured Location */}
-              {location && (
-                <div className="mt-3 p-3 bg-accent/5 rounded-md border border-accent/20">
-                  <p className="text-sm font-medium text-success">Geo-coordinates captured:</p>
-                  <p className="text-xs text-neutral-600 mt-1">
-                    Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
-                  </p>
+                <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-md"> {/* Adjusted error style */}
+                    {formError}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-between items-center pt-2">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="btn btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting || !location || !address} // Disable if no coordinates OR no address
-            className="btn btn-primary"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              'Save Visit'
             )}
-          </button>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Visit Details Card */}
+                <div className="card p-6 bg-white shadow rounded-lg"> {/* Added card styles */}
+                    <h2 className="text-lg font-medium mb-4 text-gray-700">Visit Details</h2> {/* Adjusted text color */}
+                    <div className="space-y-4">
+                        {/* Visit Date */}
+                        <div>
+                            <label htmlFor="visitDate" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Visit Date
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <Calendar size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="date"
+                                    id="visitDate"
+                                    value={visitDate}
+                                    onChange={(e) => setVisitDate(e.target.value)}
+                                    className="input pl-10"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        {/* Buyer Name */}
+                        <div>
+                            <label htmlFor="buyerName" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Buyer Name
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <User size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="text"
+                                    id="buyerName"
+                                    value={buyerName}
+                                    onChange={(e) => setBuyerName(e.target.value)}
+                                    className="input pl-10"
+                                    required
+                                    placeholder="Enter buyer's full name"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Mobile Phone */}
+                        <div>
+                            <label htmlFor="mobile_phone" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Mobile Phone
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <Phone size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="tel"
+                                    id="mobile_phone"
+                                    value={mobile_phone}
+                                    onChange={(e) => setMobilePhone(e.target.value)}
+                                    className="input pl-10"
+                                    required
+                                    placeholder="Enter mobile number (e.g., 07xxxxxxxx)"
+                                    pattern="[0-9]{10,15}"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Land Phone */}
+                        <div>
+                            <label htmlFor="land_phone" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Land Phone (Optional)
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <Phone size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="tel"
+                                    id="land_phone"
+                                    value={land_phone}
+                                    onChange={(e) => setLandPhone(e.target.value)}
+                                    className="input pl-10"
+                                    placeholder="Enter landline number"
+                                    pattern="[0-9]{9,15}"
+                                />
+                            </div>
+                        </div>
+
+                        {/* --- Item Selection Area --- */}
+                        <div>
+                            <label htmlFor="itemToAdd" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Select Item to Add
+                            </label>
+                            <div className="flex items-center space-x-2">
+                                <div className="relative flex-grow">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                        <Package size={18} className="text-neutral-500" />
+                                    </div>
+                                    <Select
+                                        inputId="itemToAdd"
+                                        options={itemOptions}
+                                        value={currentItemToAdd} // Controlled by currentItemToAdd state
+                                        onChange={(selectedOption) => setCurrentItemToAdd(selectedOption as SingleValue<SelectOption>)} // Update current item state
+                                        placeholder="Search and select item..."
+                                        styles={customStyles}
+                                        isSearchable
+                                        isClearable // Allow clearing the selection
+                                        filterOption={customFilter}
+                                        className="react-select-container"
+                                        classNamePrefix="react-select"
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleAddItem}
+                                    disabled={!currentItemToAdd || isSubmitting} // Disable if no item selected or submitting
+                                    className="btn btn-secondary p-2 h-[42px]" // Adjusted button style/size
+                                    title="Add selected item to list"
+                                >
+                                    <Plus size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* --- Display Added Items --- */}
+                        {addedItems.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                                <h3 className="text-sm font-medium text-neutral-700">Added Items:</h3>
+                                <ul className="border border-neutral-200 rounded-md p-2 bg-neutral-50 max-h-32 overflow-y-auto">
+                                    {addedItems.map((item, index) => (
+                                        <li key={`${item.value}-${index}`} // Use index for key to allow duplicates
+                                            className="flex justify-between items-center py-1 px-2 text-sm text-neutral-800 hover:bg-neutral-100 rounded"
+                                        >
+                                            <span>{item.label}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveItem(index)}
+                                                disabled={isSubmitting}
+                                                className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100"
+                                                title="Remove this item"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        {/* --- End Item Selection Area --- */}
+
+
+                        {/* Route Selector (Single Select) */}
+                        <div>
+                            <label htmlFor="routeId" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Route
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <Route size={18} className="text-neutral-500" />
+                                </div>
+                                <Select
+                                    inputId="routeId"
+                                    options={routeOptions}
+                                    value={routeOptions.find(option => option.value === routeId)}
+                                    onChange={(selectedOption) => setRouteId(selectedOption?.value || '')}
+                                    placeholder="Select Route"
+                                    styles={customStyles}
+                                    isSearchable
+                                    isClearable
+                                    // 'required' validation is handled in handleSubmit
+                                    filterOption={customFilter}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Visit Type */}
+                        <div>
+                            <label htmlFor="visitType" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Visit Type
+                            </label>
+                            <div className="relative">
+                                <select
+                                    id="visitType"
+                                    value={visitType}
+                                    onChange={(e) => setVisitType(e.target.value as 'Sample' | 'Sittu' | 'Over')}
+                                    className="input pr-10 appearance-none"
+                                    required
+                                >
+                                    <option value="Sample">Sample</option>
+                                    <option value="Sittu">Sittu</option>
+                                    <option value="Over">Over</option>
+                                </select>
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                    <ChevronDown size={18} className="text-neutral-500" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        <div>
+                            <label htmlFor="notes" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Notes (Optional)
+                            </label>
+                            <div className="relative">
+                                <div className="absolute top-3 left-3 pointer-events-none z-20">
+                                    <FileText size={18} className="text-neutral-500" />
+                                </div>
+                                <textarea
+                                    id="notes"
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    className="input pl-10 min-h-[100px]"
+                                    placeholder="Add any special instructions or notes"
+                                />
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                {/* Location Card */}
+                <div className="card p-6 bg-white shadow rounded-lg"> {/* Added card styles */}
+                    <h2 className="text-lg font-medium mb-4 text-gray-700">Location</h2> {/* Adjusted text color */}
+                    <div className="space-y-4">
+                        {/* Address Input */}
+                        <div>
+                            <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Address
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
+                                    <MapPin size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="text"
+                                    id="address"
+                                    value={address}
+                                    onChange={(e) => setAddress(e.target.value)}
+                                    className="input pl-10"
+                                    placeholder="Enter street address, city"
+                                    required // Address is required
+                                />
+                            </div>
+                        </div>
+
+                        {/* Get Location Button and Display */}
+                        <div>
+                            <button
+                                type="button"
+                                onClick={getCurrentLocation}
+                                disabled={isGettingLocation || isSubmitting}
+                                className="btn btn-secondary w-full flex items-center justify-center"
+                            >
+                                {isGettingLocation ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
+                                        Getting coordinates...
+                                    </>
+                                ) : location ? (
+                                    <>
+                                        <Check size={18} className="mr-2 text-green-600" /> {/* Green check */}
+                                        Geo-Coordinates Captured (Update?)
+                                    </>
+                                ) : (
+                                    <>
+                                        <MapPin size={18} className="mr-2" />
+                                        Get Current Geo-Coordinates
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Display Location Error */}
+                            {locationError && (
+                                <p className="text-red-600 text-sm mt-2">{locationError}</p> 
+                            )}
+
+                            {/* Display Captured Location Info */}
+                            {location && (
+                                <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200"> {/* Adjusted success style */}
+                                    <p className="text-sm font-medium text-green-700 flex items-center">
+                                        <Check size={16} className="mr-1.5" /> Geo-coordinates captured:
+                                    </p>
+                                    <p className="text-xs text-neutral-600 mt-1 pl-5">
+                                        Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
+                                    </p>
+                                    {/* Address is displayed via its input field, no need to repeat here unless desired */}
+                                    {/* <p className="text-xs text-neutral-500 mt-1 pl-5">Address Entered: {address}</p> */}
+                                </div>
+                            )}
+                             {!location && address && (
+                                <p className="text-xs text-neutral-500 mt-2 pl-1">Remember to capture geo-coordinates.</p>
+                             )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-between items-center pt-2">
+                    <button
+                        type="button"
+                        onClick={() => navigate(-1)}
+                        className="btn btn-outline"
+                        disabled={isSubmitting}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        // Update disable condition
+                        disabled={
+                            isSubmitting ||
+                            !location || // No lat/lng
+                            !address ||   // No address string
+                            addedItems.length === 0 || // No items added
+                            !routeId      // No route selected
+                        }
+                        className="btn btn-primary"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                                Saving Visit...
+                            </>
+                        ) : (
+                            'Save Visit'
+                        )}
+                    </button>
+                </div>
+            </form>
         </div>
-      </form>
-    </div>
-  );
+    );
 };
 
 export default VisitFormPage;
