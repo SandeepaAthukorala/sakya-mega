@@ -5,10 +5,8 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-import DashboardPage from './pages/DashboardPage';
 import VisitFormPage from './pages/VisitFormPage';
 import VisitListPage from './pages/VisitListPage';
-import MapViewPage from './pages/MapViewPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { useAuth } from './contexts/AuthContext';
@@ -22,7 +20,7 @@ function App() {
     } else if (user?.role === 'Ref') {
       return <Navigate to="/visits" replace />;
     } else {
-      return <Navigate to="/dashboard" replace />;
+      return <Navigate to="/login" replace />;
     }
   };
 
@@ -36,14 +34,6 @@ function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<ConditionalRedirect />} />
             
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } 
-            />
             
             <Route 
               path="/visits/new" 
@@ -63,14 +53,6 @@ function App() {
               } 
             />
             
-            <Route 
-              path="/map" 
-              element={
-                <ProtectedRoute>
-                  <MapViewPage />
-                </ProtectedRoute>
-              } 
-            />
             
             <Route 
               path="/admin" 

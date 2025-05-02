@@ -16,7 +16,7 @@ const Layout: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-secondary">
       {showNav && <Navbar />}
       
-      <main className="flex-1 pt-16 pb-16 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
+      <main className="flex-1 pt-16 pb-16 px-4 sm:px-0 md:px-0 max-w-7xl mx-auto w-full">
         <Outlet />
       </main>
       

@@ -8,6 +8,8 @@ export interface User {
   dateRegistered: string;
 }
 
+
+
 export interface Visit {
   id: string;
   refId: string;
