@@ -23,75 +23,95 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Function to fetch user data from the database
+  const fetchUserData = async (email: string) => {
+    try {
+      const { data: userData, error } = await supabase
+        .from('users')
+        .select()
+        .eq('email', email)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user data:', error);
+        return null;
+      }
+      
+      return userData;
+    } catch (error) {
+      console.error('Exception fetching user data:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
+    // Get the initial session
     const getSession = async () => {
       setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession()
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
 
-      if (session) {
-        const { data: user, error } = await supabase
-          .from('users')
-          .select()
-          .eq('email', session.user.email)
-          .single()
-
-        if (error) {
-          console.error('Error fetching user:', error);
-        } else {
-          setUser(user);
+        if (session?.user?.email) {
+          const userData = await fetchUserData(session.user.email);
+          if (userData) {
+            setUser(userData);
+          }
         }
+      } catch (error) {
+        console.error('Session retrieval error:', error);
+      } finally {
+        setIsLoading(false);
       }
-
-      setIsLoading(false);
-    }
+    };
 
     getSession();
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        const { data: user, error } = supabase
-          .from('users')
-          .select()
-          .eq('email', session.user.email)
-          .single()
-
-        if (error) {
-          console.error('Error fetching user:', error);
-        } else {
-          setUser(user);
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        setIsLoading(true);
+        
+        try {
+          if (session?.user?.email) {
+            const userData = await fetchUserData(session.user.email);
+            setUser(userData);
+          } else {
+            setUser(null);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+          setUser(null);
+        } finally {
+          setIsLoading(false);
         }
-      } else {
-        setUser(null);
       }
-    })
+    );
+
+    // Clean up subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
+      // Use Supabase auth with session persistence enabled by default
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
-      })
-
-      console.log('Login data:', data);
-      console.log('Login error:', error);
+      });
 
       if (error) throw error;
 
       if (data.user) {
-        const { data: user, error: userError } = await supabase
-          .from('users')
-          .select()
-          .eq('email', data.user.email)
-          .single()
-
-        if (userError) {
-          console.error('Error fetching user:', userError);
-          throw userError;
-        } else {
-          setUser(user);
+        // Fetch user data from our database
+        const userData = await fetchUserData(data.user.email);
+        if (!userData) {
+          throw new Error('Failed to retrieve user data after login.');
         }
+        
+        setUser(userData);
       } else {
         throw new Error('Failed to retrieve user data after login.');
       }
@@ -111,6 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Invalid role selected.');
       }
 
+      // Register user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -121,7 +142,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             role: role,
           },
         },
-      })
+      });
 
       if (error) {
         if (error.message === 'User already registered') {
@@ -131,6 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (data.user) {
+        // Insert user data into our database
         const { error: userError } = await supabase
           .from('users')
           .insert({
@@ -140,9 +162,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             last_name: lastName,
             role: role,
           })
-          .single()
+          .single();
 
-        if (userError) throw userError;
+        if (userError) {
+          console.error('Error creating user record:', userError);
+          throw userError;
+        }
+        
+        // Fetch the newly created user data
+        const userData = await fetchUserData(email);
+        if (userData) {
+          setUser(userData);
+        }
       } else {
         throw new Error('Failed to retrieve user data after registration.');
       }
@@ -158,7 +189,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signOut()
+      // Sign out from all tabs/devices
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error) throw error;
     } catch (error: any) {
       console.error('Logout error:', error.message);

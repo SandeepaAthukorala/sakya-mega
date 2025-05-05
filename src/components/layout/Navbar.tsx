@@ -9,6 +9,17 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
 
+  // Handle smooth scrolling to sections when hash links are clicked
+  const scrollToSection = (sectionId: string) => {
+    closeMenu();
+    setTimeout(() => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+  };
+
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const closeMenu = () => setIsMenuOpen(false);
 
@@ -37,6 +48,45 @@ const Navbar: React.FC = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-2">
+            {user?.role === 'Admin' && (
+              <div className="flex space-x-2">
+                <Link 
+                  to="/admin" 
+                  className={`btn btn-sm ${isActive('/admin') ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={closeMenu}
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/admin#visits" 
+                  className={`btn btn-sm ${location.hash === '#visits' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => scrollToSection('visits')}
+                >
+                  Visits
+                </Link>
+                <Link 
+                  to="/admin#refs" 
+                  className={`btn btn-sm ${location.hash === '#refs' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => scrollToSection('refs')}
+                >
+                  Refs
+                </Link>
+                <Link 
+                  to="/admin#routes" 
+                  className={`btn btn-sm ${location.hash === '#routes' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => scrollToSection('routes')}
+                >
+                  Routes
+                </Link>
+                <Link 
+                  to="/admin#items" 
+                  className={`btn btn-sm ${location.hash === '#items' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => scrollToSection('items')}
+                >
+                  Items
+                </Link>
+              </div>
+            )}
           </nav>
 
           {/* User Menu */}
@@ -71,6 +121,45 @@ const Navbar: React.FC = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-white border-t border-neutral-200 animate-fade-in">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+            {user?.role === 'Admin' && (
+              <div className="flex flex-col space-y-2">
+                <Link 
+                  to="/admin" 
+                  className={`btn btn-sm ${isActive('/admin') ? 'btn-primary' : 'btn-ghost'} justify-start`}
+                  onClick={closeMenu}
+                >
+                  Dashboard
+                </Link>
+                <Link 
+                  to="/admin#visits" 
+                  className={`btn btn-sm ${location.hash === '#visits' ? 'btn-primary' : 'btn-ghost'} justify-start`}
+                  onClick={() => scrollToSection('visits')}
+                >
+                  Visits
+                </Link>
+                <Link 
+                  to="/admin#refs" 
+                  className={`btn btn-sm ${location.hash === '#refs' ? 'btn-primary' : 'btn-ghost'} justify-start`}
+                  onClick={() => scrollToSection('refs')}
+                >
+                  Refs
+                </Link>
+                <Link 
+                  to="/admin#routes" 
+                  className={`btn btn-sm ${location.hash === '#routes' ? 'btn-primary' : 'btn-ghost'} justify-start`}
+                  onClick={() => scrollToSection('routes')}
+                >
+                  Routes
+                </Link>
+                <Link 
+                  to="/admin#items" 
+                  className={`btn btn-sm ${location.hash === '#items' ? 'btn-primary' : 'btn-ghost'} justify-start`}
+                  onClick={() => scrollToSection('items')}
+                >
+                  Items
+                </Link>
+              </div>
+            )}
           </div>
           <div className="pt-4 pb-3 border-t border-neutral-200">
             <div className="flex items-center justify-between px-5">

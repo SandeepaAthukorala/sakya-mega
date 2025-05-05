@@ -1,0 +1,557 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../../../supabaseClient';
+import { EditingCellState } from '../types';
+
+interface TableSectionProps {
+  title: string;
+  data: any[];
+  setData: React.Dispatch<React.SetStateAction<any[]>>;
+  columns: {
+    key: string;
+    header: string;
+    render?: (item: any) => React.ReactNode;
+    editable?: boolean;
+    type?: 'text' | 'number' | 'select';
+    options?: string[];
+    filterable?: boolean; // Whether this column should have a filter option
+  }[];
+  tableName: string; // Supabase table name
+  itemType: 'visit' | 'ref' | 'route' | 'item';
+  searchPlaceholder?: string;
+  filters?: {
+    key: string;
+    label: string;
+    filter: (item: any) => boolean;
+  }[];
+  onAddItem?: () => void;
+  addButtonText?: string;
+  editingCell: EditingCellState;
+  setEditingCell: React.Dispatch<React.SetStateAction<EditingCellState>>;
+  editValue: any;
+  setEditValue: React.Dispatch<React.SetStateAction<any>>;
+  isLoadingInline: boolean;
+  setIsLoadingInline: React.Dispatch<React.SetStateAction<boolean>>;
+  inputRef: React.RefObject<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
+  dateField?: string; // Field name for date filtering
+}
+
+const TableSection: React.FC<TableSectionProps> = ({
+  title,
+  data,
+  setData,
+  columns,
+  tableName,
+  itemType,
+  searchPlaceholder = 'Search...',
+  filters = [],
+  onAddItem,
+  addButtonText = 'Add Item',
+  editingCell,
+  setEditingCell,
+  editValue,
+  setEditValue,
+  isLoadingInline,
+  setIsLoadingInline,
+  inputRef,
+  dateField
+}) => {
+  // State for filtering and search
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [columnFilters, setColumnFilters] = useState<{[key: string]: string}>({});
+  const [showColumnFilters, setShowColumnFilters] = useState(false);
+
+  // Filter data based on search term, active filter, date range, and column filters
+  const filteredData = React.useMemo(() => {
+    if (isCollapsed) return [];
+    
+    return data.filter(item => {
+      // Apply search filter
+      const searchMatch = searchTerm === '' || 
+        Object.entries(item).some(([key, value]) => {
+          if (typeof value === 'string' || typeof value === 'number') {
+            return String(value).toLowerCase().includes(searchTerm.toLowerCase());
+          }
+          return false;
+        });
+      
+      // Apply type filter
+      let filterMatch = activeFilter === 'all';
+      if (!filterMatch) {
+        const activeFilterObj = filters.find(f => f.key === activeFilter);
+        if (activeFilterObj) {
+          filterMatch = activeFilterObj.filter(item);
+        }
+      }
+      
+      // Apply date filter if dateField is provided
+      let dateMatch = true;
+      if (dateField && (startDate || endDate)) {
+        const itemDate = item[dateField]?.split('T')[0];
+        if (itemDate) {
+          if (startDate && endDate) {
+            dateMatch = itemDate >= startDate && itemDate <= endDate;
+          } else if (startDate) {
+            dateMatch = itemDate >= startDate;
+          } else if (endDate) {
+            dateMatch = itemDate <= endDate;
+          }
+        }
+      }
+      
+      // Apply column filters
+      let columnFilterMatch = true;
+      if (Object.keys(columnFilters).length > 0) {
+        columnFilterMatch = Object.entries(columnFilters).every(([key, value]) => {
+          if (!value) return true; // Skip empty filters
+          
+          const itemValue = item[key];
+          if (itemValue === null || itemValue === undefined) return false;
+          
+          // Get column definition to check if it's a select type
+          const columnDef = columns.find(col => col.key === key);
+          const isSelectType = columnDef?.type === 'select';
+          
+          // Handle different types of values
+          if (typeof itemValue === 'string') {
+            // For select types, do exact match; for others, do partial match
+            return isSelectType 
+              ? itemValue === value
+              : itemValue.toLowerCase().includes(value.toLowerCase());
+          } else if (typeof itemValue === 'number') {
+            return isSelectType
+              ? String(itemValue) === value
+              : String(itemValue).includes(value);
+          } else if (typeof itemValue === 'object') {
+            // For objects like dates or nested objects, try to match in string representation
+            return JSON.stringify(itemValue).toLowerCase().includes(value.toLowerCase());
+          }
+          
+          return false;
+        });
+      }
+      
+      return searchMatch && filterMatch && dateMatch && columnFilterMatch;
+    });
+  }, [data, searchTerm, activeFilter, filters, isCollapsed, startDate, endDate, dateField, columnFilters]);
+  
+  // Get unique values for each filterable column
+  const getUniqueColumnValues = (columnKey: string) => {
+    const uniqueValues = new Set<string>();
+    
+    data.forEach(item => {
+      const value = item[columnKey];
+      if (value !== null && value !== undefined) {
+        uniqueValues.add(String(value));
+      }
+    });
+    
+    return Array.from(uniqueValues).sort();
+  };
+  
+  // Get column by key
+  const getColumnByKey = (key: string) => {
+    return columns.find(col => col.key === key);
+  };
+
+  // Handle cell double click for inline editing
+  const handleCellDoubleClick = (rowId: string, field: string) => {
+    const item = data.find(i => i.id === rowId);
+    if (!item) return;
+    
+    setEditingCell({ type: itemType, rowId, field: field as any });
+    setEditValue(item[field]);
+    
+    // Focus the input after it's rendered
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 10);
+  };
+
+  // Handle saving edited cell value
+  const handleSaveEdit = async () => {
+    if (!editingCell.rowId || !editingCell.field) return;
+    
+    setIsLoadingInline(true);
+    
+    try {
+      // Update in Supabase
+      const { error } = await supabase
+        .from(tableName)
+        .update({ [editingCell.field]: editValue })
+        .eq('id', editingCell.rowId);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setData(prevData => 
+        prevData.map(item => 
+          item.id === editingCell.rowId 
+            ? { ...item, [editingCell.field!]: editValue } 
+            : item
+        )
+      );
+    } catch (error) {
+      console.error(`Error updating ${itemType}:`, error);
+    } finally {
+      setIsLoadingInline(false);
+      setEditingCell({ type: null, rowId: null, field: null });
+      setEditValue('');
+    }
+  };
+
+  // Handle cancel editing
+  const handleCancelEdit = () => {
+    setEditingCell({ type: null, rowId: null, field: null });
+    setEditValue('');
+  };
+
+  // Handle key press in edit input
+  const handleEditKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  // Handle delete item
+  const handleDeleteItem = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
+    
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setData(prevData => prevData.filter(item => item.id !== id));
+    } catch (error) {
+      console.error(`Error deleting ${itemType}:`, error);
+    }
+  };
+
+  // Render edit input based on column type
+  const renderEditInput = (column: typeof columns[0]) => {
+    const type = column.type || 'text';
+    
+    switch (type) {
+      case 'select':
+        return (
+          <select
+            ref={inputRef as React.RefObject<HTMLSelectElement>}
+            className="input input-bordered input-sm w-full"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleEditKeyDown}
+            onBlur={handleSaveEdit}
+          >
+            {column.options?.map(option => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+        );
+      case 'number':
+        return (
+          <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type="number"
+            className="input input-bordered input-sm w-full"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.valueAsNumber)}
+            onKeyDown={handleEditKeyDown}
+            onBlur={handleSaveEdit}
+          />
+        );
+      default:
+        return (
+          <input
+            ref={inputRef as React.RefObject<HTMLInputElement>}
+            type="text"
+            className="input input-bordered input-sm w-full"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleEditKeyDown}
+            onBlur={handleSaveEdit}
+          />
+        );
+    }
+  };
+
+  // Render cell content
+  const renderCell = (item: any, column: typeof columns[0]) => {
+    const isEditing = 
+      editingCell.type === itemType && 
+      editingCell.rowId === item.id && 
+      editingCell.field === column.key;
+    
+    if (isEditing) {
+      return isLoadingInline ? (
+        <div className="flex justify-center items-center">
+          <div className="animate-spin h-4 w-4 border-2 border-primary rounded-full border-t-transparent"></div>
+        </div>
+      ) : renderEditInput(column);
+    }
+    
+    if (column.render) {
+      return column.render(item);
+    }
+    
+    return item[column.key];
+  };
+
+  return (
+    <section id={itemType + 's'} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+      {/* Header with collapse toggle */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 
+          className="text-2xl font-bold text-neutral-800 flex items-center cursor-pointer"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <span className="mr-2">{isCollapsed ? '▶' : '▼'}</span>
+          {title}
+        </h2>
+        
+        {!isCollapsed && onAddItem && (
+          <button 
+            className="btn btn-primary"
+            onClick={onAddItem}
+          >
+            {addButtonText}
+          </button>
+        )}
+      </div>
+      
+      {!isCollapsed && (
+        <>
+          {/* Filters and Search */}
+          <div className="flex flex-col md:flex-row justify-between mb-4 gap-4">
+            <div className="flex flex-col gap-4 w-full">
+              <div className="flex flex-wrap gap-2 items-center">
+                {filters.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <button 
+                      className={`btn ${activeFilter === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm`}
+                      onClick={() => setActiveFilter('all')}
+                    >
+                      All
+                    </button>
+                    {filters.map(filter => (
+                      <button 
+                        key={filter.key}
+                        className={`btn ${activeFilter === filter.key ? 'btn-primary' : 'btn-outline'} btn-sm`}
+                        onClick={() => setActiveFilter(filter.key)}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="flex gap-2 ml-auto">
+                  {/* Column filters button */}
+                  <button 
+                    className={`btn ${showColumnFilters ? 'btn-primary' : 'btn-outline'} btn-sm`}
+                    onClick={() => setShowColumnFilters(!showColumnFilters)}
+                  >
+                    {showColumnFilters ? 'Hide Filters' : 'Column Filters'}
+                  </button>
+                  
+                  {/* Date filter button */}
+                  {dateField && (
+                    <button 
+                      className={`btn ${showDateFilter ? 'btn-primary' : 'btn-outline'} btn-sm`}
+                      onClick={() => setShowDateFilter(!showDateFilter)}
+                    >
+                      {showDateFilter ? 'Hide Date Filter' : 'Date Filter'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex flex-wrap gap-4 items-center">
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder={searchPlaceholder}
+                    className="input input-bordered w-full max-w-xs"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                
+                {/* Date filter UI */}
+                {dateField && showDateFilter && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium">Start:</label>
+                      <input
+                        type="date"
+                        className="input input-bordered input-sm"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm font-medium">End:</label>
+                      <input
+                        type="date"
+                        className="input input-bordered input-sm"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    </div>
+                    {(startDate || endDate) && (
+                      <button 
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => {
+                          setStartDate('');
+                          setEndDate('');
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {/* Column filters UI */}
+                {showColumnFilters && (
+                  <div className="flex flex-wrap gap-2 items-center w-full mt-2 p-2 bg-gray-50 rounded-md">
+                    <div className="text-sm font-medium mr-2">Filter by:</div>
+                    {columns.filter(col => col.filterable !== false).map(column => {
+                      const columnDef = getColumnByKey(column.key);
+                      const isSelectType = columnDef?.type === 'select' && columnDef?.options;
+                      
+                      // Get unique values for this column if not a select type
+                      const uniqueValues = !isSelectType ? getUniqueColumnValues(column.key) : [];
+                      
+                      return (
+                        <div key={column.key} className="flex items-center gap-1">
+                          <label className="text-sm font-medium">{column.header}:</label>
+                          {isSelectType ? (
+                            <select
+                              className="select select-bordered select-sm max-w-[150px]"
+                              value={columnFilters[column.key] || ''}
+                              onChange={(e) => {
+                                setColumnFilters(prev => ({
+                                  ...prev,
+                                  [column.key]: e.target.value
+                                }));
+                              }}
+                            >
+                              <option value="">All</option>
+                              {columnDef.options?.map(option => (
+                                <option key={option} value={option}>{option}</option>
+                              ))}
+                            </select>
+                          ) : uniqueValues.length > 0 ? (
+                            <select
+                              className="select select-bordered select-sm max-w-[150px]"
+                              value={columnFilters[column.key] || ''}
+                              onChange={(e) => {
+                                setColumnFilters(prev => ({
+                                  ...prev,
+                                  [column.key]: e.target.value
+                                }));
+                              }}
+                            >
+                              <option value="">All</option>
+                              {uniqueValues.map(value => (
+                                <option key={value} value={value}>{value}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              type="text"
+                              className="input input-bordered input-sm max-w-[150px]"
+                              value={columnFilters[column.key] || ''}
+                              onChange={(e) => {
+                                setColumnFilters(prev => ({
+                                  ...prev,
+                                  [column.key]: e.target.value
+                                }));
+                              }}
+                              placeholder={`Filter ${column.header}`}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                    {Object.keys(columnFilters).length > 0 && (
+                      <button
+                        className="btn btn-sm btn-ghost"
+                        onClick={() => setColumnFilters({})}
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="table w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {columns.map(column => (
+                    <th key={column.key} className="px-4 py-2 text-left text-gray-600 font-medium">
+                      {column.header}
+                    </th>
+                  ))}
+                  <th className="px-4 py-2 text-left text-gray-600 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredData.length > 0 ? (
+                  filteredData.map(item => (
+                    <tr key={item.id} className="hover:bg-gray-50 border-b border-gray-200">
+                      {columns.map(column => (
+                        <td 
+                          key={`${item.id}-${column.key}`} 
+                          className="px-4 py-2"
+                          onDoubleClick={() => column.editable && handleCellDoubleClick(item.id, column.key)}
+                        >
+                          {renderCell(item, column)}
+                        </td>
+                      ))}
+                      <td className="px-4 py-2">
+                        <button 
+                          className="btn btn-sm btn-error btn-outline"
+                          onClick={() => handleDeleteItem(item.id)}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={columns.length + 1} className="text-center py-4">
+                      {isCollapsed ? '' : 'No items found'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+};
+
+export default TableSection;

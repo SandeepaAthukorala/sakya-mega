@@ -8,7 +8,19 @@ export interface User {
   dateRegistered: string;
 }
 
-
+export interface Route {
+  id: string;
+  ref_id: string | null;
+  name: string;
+  number: number;
+  created_at?: string; // Optional
+}
+export interface Item {
+  id: string;
+  item_name: string;
+  item_number: number;
+  created_at?: string; // Optional
+}
 
 export interface Visit {
   id: string;
