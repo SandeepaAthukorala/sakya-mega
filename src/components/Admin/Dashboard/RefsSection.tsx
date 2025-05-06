@@ -125,14 +125,12 @@ const RefsSection: React.FC<RefsSectionProps> = ({
             filterable: true,
             render: (ref: User) => (
                 <div className="flex justify-center">
-                    <label className="swap">
-                        <input 
-                            type="checkbox" 
-                            checked={ref.access === true}
-                            onChange={() => handleToggleAccess(ref.id, ref.access)}
-                            className="toggle toggle-primary"
-                        />
-                    </label>
+                    <input 
+                        type="checkbox" 
+                        checked={ref.access === true}
+                        onChange={() => handleToggleAccess(ref.id, ref.access)}
+                        className="toggle toggle-primary"
+                    />
                 </div>
             )
         },
