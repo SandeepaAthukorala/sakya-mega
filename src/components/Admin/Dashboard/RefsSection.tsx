@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { User } from '../../../types';
 import { EditingCellState, NewRefDataType } from '../types';
 import { HighlightMatch } from './index';
@@ -42,6 +42,56 @@ const RefsSection: React.FC<RefsSectionProps> = ({
     lastMonthStart,
     lastMonthEnd
 }) => {
+    // State for global access toggle
+    const [isUpdatingAllAccess, setIsUpdatingAllAccess] = useState(false);
+    
+    // Check if all refs have access enabled
+    const allRefsHaveAccess = allRefs.every(ref => ref.access === true);
+    
+    // Handle toggling access for a single user
+    const handleToggleAccess = async (userId: string, currentAccess: boolean | undefined) => {
+        try {
+            const { error } = await supabase
+                .from('users')
+                .update({ access: !currentAccess })
+                .eq('id', userId);
+                
+            if (error) throw error;
+            
+            // Update local state
+            setAllRefs(prev => prev.map(ref => 
+                ref.id === userId ? { ...ref, access: !currentAccess } : ref
+            ));
+        } catch (error) {
+            console.error('Error updating access:', error);
+        }
+    };
+    
+    // Handle toggling access for all referrers
+    const handleToggleAllAccess = async () => {
+        setIsUpdatingAllAccess(true);
+        try {
+            const newAccessValue = !allRefsHaveAccess;
+            
+            // Update all refs with role = 'Ref' in the database
+            const { error } = await supabase
+                .from('users')
+                .update({ access: newAccessValue })
+                .eq('role', 'Ref');
+                
+            if (error) throw error;
+            
+            // Update local state
+            setAllRefs(prev => prev.map(ref => 
+                ref.role === 'Ref' ? { ...ref, access: newAccessValue } : ref
+            ));
+        } catch (error) {
+            console.error('Error updating all access:', error);
+        } finally {
+            setIsUpdatingAllAccess(false);
+        }
+    };
+    
     // Define columns for the table
     const columns = [
         {
@@ -67,6 +117,24 @@ const RefsSection: React.FC<RefsSectionProps> = ({
             header: 'Phone',
             editable: true,
             filterable: true
+        },
+        {
+            key: 'access',
+            header: 'Access',
+            editable: false,
+            filterable: true,
+            render: (ref: User) => (
+                <div className="flex justify-center">
+                    <label className="swap">
+                        <input 
+                            type="checkbox" 
+                            checked={ref.access === true}
+                            onChange={() => handleToggleAccess(ref.id, ref.access)}
+                            className="toggle toggle-primary"
+                        />
+                    </label>
+                </div>
+            )
         },
         {
             key: 'created_at',
@@ -108,7 +176,8 @@ const RefsSection: React.FC<RefsSectionProps> = ({
             last_name: 'Referrer',
             email: 'new.referrer@example.com',
             phone: '',
-            role: 'Ref'
+            role: 'Ref',
+            access: true // Default to enabled access for new referrers
         };
 
         try {
@@ -128,26 +197,39 @@ const RefsSection: React.FC<RefsSectionProps> = ({
     };
 
     return (
-        <TableSection
-            title="Referrers"
-            data={allRefs}
-            setData={setAllRefs}
-            columns={columns}
-            tableName="users"
-            itemType="ref"
-            searchPlaceholder="Search referrers..."
-            filters={filters}
-            onAddItem={handleAddRef}
-            addButtonText="Add Referrer"
-            editingCell={editingCell}
-            setEditingCell={setEditingCell}
-            editValue={editValue}
-            setEditValue={setEditValue}
-            isLoadingInline={isLoadingInline}
-            setIsLoadingInline={setIsLoadingInline}
-            inputRef={inputRef}
-            dateField="created_at"
-        />
+        <>
+            {/* Global Access Toggle Button */}
+            <div className="flex justify-end mb-4">
+                <button 
+                    className={`btn ${allRefsHaveAccess ? 'btn-error' : 'btn-success'} ${isUpdatingAllAccess ? 'loading' : ''}`}
+                    onClick={handleToggleAllAccess}
+                    disabled={isUpdatingAllAccess}
+                >
+                    {allRefsHaveAccess ? 'Disable All Access' : 'Enable All Access'}
+                </button>
+            </div>
+            
+            <TableSection
+                title="Referrers"
+                data={allRefs}
+                setData={setAllRefs}
+                columns={columns}
+                tableName="users"
+                itemType="ref"
+                searchPlaceholder="Search referrers..."
+                filters={filters}
+                onAddItem={handleAddRef}
+                addButtonText="Add Referrer"
+                editingCell={editingCell}
+                setEditingCell={setEditingCell}
+                editValue={editValue}
+                setEditValue={setEditValue}
+                isLoadingInline={isLoadingInline}
+                setIsLoadingInline={setIsLoadingInline}
+                inputRef={inputRef}
+                dateField="created_at"
+            />
+        </>
     );
 };
 

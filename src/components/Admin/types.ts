@@ -20,7 +20,7 @@ export interface Item {
 
 // --- Types for New Data ---
 export type NewVisitDataType = Partial<Omit<Visit, 'id' | 'created_at' | 'location'>> & { item_id_string?: string };
-export type NewRefDataType = Partial<Omit<UserType, 'id' | 'created_at' | 'role' | 'invited_at' | 'updated_at'>>;
+export type NewRefDataType = Partial<Omit<UserType, 'id' | 'created_at' | 'role' | 'invited_at' | 'updated_at'>> & { access?: boolean };
 export type NewRouteDataType = Partial<Omit<Route, 'id' | 'created_at'>>;
 export type NewItemDataType = Partial<Omit<Item, 'id' | 'created_at'>>;
 

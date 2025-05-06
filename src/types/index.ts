@@ -6,6 +6,10 @@ export interface User {
   last_name: string;
   role: UserRole;
   dateRegistered: string;
+  email?: string;
+  phone?: string;
+  created_at?: string;
+  access?: boolean;
 }
 
 export interface Route {
