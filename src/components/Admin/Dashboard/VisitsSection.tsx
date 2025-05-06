@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Visit, User } from '../../../types';
 import { Item, EditingCellState, NewVisitDataType } from '../types';
 import { HighlightMatch } from './index';
@@ -49,6 +49,10 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
     thisWeekEnd,
     formatDateDisplay
 }) => {
+    // State for proximity sorting
+    const [startLat, setStartLat] = useState<string>('');
+    const [startLng, setStartLng] = useState<string>('');
+    const [sortedByProximity, setSortedByProximity] = useState<boolean>(false);
     // Define columns for the table
     const columns = [
         {
@@ -134,7 +138,7 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                         href={googleMapsUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="btn btn-sm btn-ghost text-primary"
+                        className="btn btn-sm btn-primary text-white"
                         title="Open in Google Maps"
                     >
                         <Map size={18} />
@@ -206,27 +210,115 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
         }
     };
 
+    // Calculate distance between two points using Haversine formula
+    const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371; // Radius of the Earth in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // Distance in km
+    };
+
+    // Sort visits by proximity to starting location
+    const handleSortByProximity = () => {
+        // Validate inputs
+        const lat = parseFloat(startLat);
+        const lng = parseFloat(startLng);
+        
+        if (isNaN(lat) || isNaN(lng)) {
+            alert('Please enter valid latitude and longitude values');
+            return;
+        }
+        
+        // Create a copy of visits with distance calculated
+        const visitsWithDistance = visits.map(visit => {
+            // Check if location data exists and is valid
+            const hasValidLocation = visit.location && 
+                typeof visit.location.lat === 'number' && 
+                typeof visit.location.lng === 'number' && 
+                (visit.location.lat !== 0 || visit.location.lng !== 0);
+            
+            // Calculate distance or set to Infinity if no valid location
+            const distance = hasValidLocation 
+                ? calculateDistance(lat, lng, visit.location.lat, visit.location.lng)
+                : Infinity;
+                
+            return { ...visit, distance };
+        });
+        
+        // Sort by distance (ascending)
+        const sorted = [...visitsWithDistance].sort((a, b) => a.distance - b.distance);
+        
+        // Update visits with sorted data
+        setVisits(sorted);
+        setSortedByProximity(true);
+    };
+
     return (
-        <TableSection
-            title="Visits"
-            data={visits}
-            setData={setVisits}
-            columns={columns}
-            tableName="visits"
-            itemType="visit"
-            searchPlaceholder="Search visits..."
-            filters={filters}
-            onAddItem={handleAddVisit}
-            addButtonText="Add Visit"
-            editingCell={editingCell}
-            setEditingCell={setEditingCell}
-            editValue={editValue}
-            setEditValue={setEditValue}
-            isLoadingInline={isLoadingInline}
-            setIsLoadingInline={setIsLoadingInline}
-            inputRef={inputRef}
-            dateField="date"
-        />
+        <>
+            {/* Proximity Sorting UI */}
+            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-4">
+                <h3 className="text-lg font-bold mb-3">Sort Visits by Proximity</h3>
+                <div className="flex flex-wrap gap-3 items-end">
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Latitude</label>
+                        <input 
+                            type="text" 
+                            className="input input-bordered w-full max-w-xs" 
+                            placeholder="e.g. 7.7187474"
+                            value={startLat}
+                            onChange={(e) => setStartLat(e.target.value)}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Longitude</label>
+                        <input 
+                            type="text" 
+                            className="input input-bordered w-full max-w-xs" 
+                            placeholder="e.g. 80.3625707"
+                            value={startLng}
+                            onChange={(e) => setStartLng(e.target.value)}
+                        />
+                    </div>
+                    <button 
+                        className="btn btn-primary"
+                        onClick={handleSortByProximity}
+                    >
+                        Sort by Nearest
+                    </button>
+                    {sortedByProximity && (
+                        <div className="text-sm text-success">
+                            Visits sorted by proximity to ({startLat}, {startLng})
+                        </div>
+                    )}
+                </div>
+            </div>
+            
+            <TableSection
+                title="Visits"
+                data={visits}
+                setData={setVisits}
+                columns={columns}
+                tableName="visits"
+                itemType="visit"
+                searchPlaceholder="Search visits..."
+                filters={filters}
+                onAddItem={handleAddVisit}
+                addButtonText="Add Visit"
+                editingCell={editingCell}
+                setEditingCell={setEditingCell}
+                editValue={editValue}
+                setEditValue={setEditValue}
+                isLoadingInline={isLoadingInline}
+                setIsLoadingInline={setIsLoadingInline}
+                inputRef={inputRef}
+                dateField="date"
+            />
+        </>
     );
 };
 
