@@ -51,17 +51,25 @@ const RefsSection: React.FC<RefsSectionProps> = ({
     // Handle toggling access for a single user
     const handleToggleAccess = async (userId: string, currentAccess: boolean | undefined) => {
         try {
+            // Update local state first for immediate UI feedback
+            const newAccessValue = !currentAccess;
+            setAllRefs(prev => prev.map(ref => 
+                ref.id === userId ? { ...ref, access: newAccessValue } : ref
+            ));
+            
+            // Then update in database
             const { error } = await supabase
                 .from('users')
-                .update({ access: !currentAccess })
+                .update({ access: newAccessValue })
                 .eq('id', userId);
                 
-            if (error) throw error;
-            
-            // Update local state
-            setAllRefs(prev => prev.map(ref => 
-                ref.id === userId ? { ...ref, access: !currentAccess } : ref
-            ));
+            if (error) {
+                // Revert local state if there was an error
+                setAllRefs(prev => prev.map(ref => 
+                    ref.id === userId ? { ...ref, access: currentAccess } : ref
+                ));
+                throw error;
+            }
         } catch (error) {
             console.error('Error updating access:', error);
         }
@@ -73,18 +81,24 @@ const RefsSection: React.FC<RefsSectionProps> = ({
         try {
             const newAccessValue = !allRefsHaveAccess;
             
-            // Update all refs with role = 'Ref' in the database
+            // Update local state first for immediate UI feedback
+            setAllRefs(prev => prev.map(ref => 
+                ref.role === 'Ref' ? { ...ref, access: newAccessValue } : ref
+            ));
+            
+            // Then update all refs with role = 'Ref' in the database
             const { error } = await supabase
                 .from('users')
                 .update({ access: newAccessValue })
                 .eq('role', 'Ref');
                 
-            if (error) throw error;
-            
-            // Update local state
-            setAllRefs(prev => prev.map(ref => 
-                ref.role === 'Ref' ? { ...ref, access: newAccessValue } : ref
-            ));
+            if (error) {
+                // Revert local state if there was an error
+                setAllRefs(prev => prev.map(ref => 
+                    ref.role === 'Ref' ? { ...ref, access: !newAccessValue } : ref
+                ));
+                throw error;
+            }
         } catch (error) {
             console.error('Error updating all access:', error);
         } finally {
@@ -129,7 +143,8 @@ const RefsSection: React.FC<RefsSectionProps> = ({
                         type="checkbox" 
                         checked={ref.access === true}
                         onChange={() => handleToggleAccess(ref.id, ref.access)}
-                        className="toggle toggle-primary"
+                        className="toggle toggle-primary toggle-lg"
+                        disabled={isUpdatingAllAccess}
                     />
                 </div>
             )
@@ -199,11 +214,27 @@ const RefsSection: React.FC<RefsSectionProps> = ({
             {/* Global Access Toggle Button */}
             <div className="flex justify-end mb-4">
                 <button 
-                    className={`btn ${allRefsHaveAccess ? 'btn-error' : 'btn-success'} ${isUpdatingAllAccess ? 'loading' : ''}`}
+                    className={`btn ${allRefsHaveAccess ? 'btn-error' : 'btn-success'} ${isUpdatingAllAccess ? 'loading' : ''} btn-lg shadow-lg transition-all duration-300 hover:scale-105`}
                     onClick={handleToggleAllAccess}
                     disabled={isUpdatingAllAccess}
                 >
-                    {allRefsHaveAccess ? 'Disable All Access' : 'Enable All Access'}
+                    <span className="flex items-center gap-2">
+                        {allRefsHaveAccess ? (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                                </svg>
+                                Disable All Access
+                            </>
+                        ) : (
+                            <>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Enable All Access
+                            </>
+                        )}
+                    </span>
                 </button>
             </div>
             
