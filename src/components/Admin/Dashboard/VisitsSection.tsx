@@ -4,6 +4,7 @@ import { Item, EditingCellState, NewVisitDataType } from '../types';
 import { HighlightMatch } from './index';
 import TableSection from './TableSection';
 import { supabase } from '../../../supabaseClient';
+import { Map } from 'lucide-react';
 
 interface VisitsSectionProps {
     visits: Visit[];
@@ -108,6 +109,38 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             header: 'Buyer',
             editable: true,
             filterable: true
+        },
+        {
+            key: 'navigation',
+            header: 'Navigation',
+            editable: false,
+            filterable: false,
+            render: (visit: Visit) => {
+                // Check if location data exists and is valid
+                const hasValidLocation = visit.location && 
+                    typeof visit.location.lat === 'number' && 
+                    typeof visit.location.lng === 'number' && 
+                    (visit.location.lat !== 0 || visit.location.lng !== 0);
+                
+                if (!hasValidLocation) {
+                    return <span className="text-neutral-400">No location</span>;
+                }
+                
+                // Create Google Maps URL
+                const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${visit.location.lat},${visit.location.lng}`;
+                
+                return (
+                    <a 
+                        href={googleMapsUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="btn btn-sm btn-ghost text-primary"
+                        title="Open in Google Maps"
+                    >
+                        <Map size={18} />
+                    </a>
+                );
+            }
         }
     ];
 
