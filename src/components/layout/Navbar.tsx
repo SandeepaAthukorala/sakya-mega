@@ -51,11 +51,11 @@ const Navbar: React.FC = () => {
             {user?.role === 'Admin' && (
               <div className="flex space-x-2">
                 <Link 
-                  to="/admin" 
-                  className={`btn btn-sm ${isActive('/admin') ? 'btn-primary' : 'btn-ghost'}`}
-                  onClick={closeMenu}
+                  to="/admin#stats"
+                  className={`btn btn-sm ${location.hash === '#stats' ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => scrollToSection('stats')}
                 >
-                  Dashboard
+                  Stats
                 </Link>
                 <Link 
                   to="/admin#visits" 
@@ -124,11 +124,11 @@ const Navbar: React.FC = () => {
             {user?.role === 'Admin' && (
               <div className="flex flex-col space-y-2">
                 <Link 
-                  to="/admin" 
-                  className={`btn btn-sm ${isActive('/admin') ? 'btn-primary' : 'btn-ghost'} justify-start`}
-                  onClick={closeMenu}
+                  to="/admin#stats"
+                  className={`btn btn-sm ${location.hash === '#stats' ? 'btn-primary' : 'btn-ghost'} justify-start`}
+                  onClick={() => scrollToSection('stats')}
                 >
-                  Dashboard
+                  Stats
                 </Link>
                 <Link 
                   to="/admin#visits" 

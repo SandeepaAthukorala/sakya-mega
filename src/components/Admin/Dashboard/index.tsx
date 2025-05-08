@@ -193,12 +193,16 @@ const AdminDashboard: React.FC = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <div className="container mx-auto px-4 py-8 max-w-7xl bg-gray-50 min-h-screen">
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
+            
             {/* Stats Section */}
-            <DashboardStats stats={stats} />
+            <div id="stats">
+              <DashboardStats stats={stats} />
+            </div>
             
             {/* Main Content Sections */}
-            <div className="mt-8 space-y-8">
+            <div className="mt-10 space-y-10">
                 {/* Visits Section */}
                 <VisitsSection 
                     visits={visits}

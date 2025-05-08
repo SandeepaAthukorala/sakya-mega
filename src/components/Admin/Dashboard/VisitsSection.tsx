@@ -50,8 +50,8 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
     formatDateDisplay
 }) => {
     // State for proximity sorting
-    const [startLat, setStartLat] = useState<string>('');
-    const [startLng, setStartLng] = useState<string>('');
+    const [startLat, setStartLat] = useState(() => localStorage.getItem('lastLat') || '');
+    const [startLng, setStartLng] = useState(() => localStorage.getItem('lastLng') || '');
     const [sortedByProximity, setSortedByProximity] = useState<boolean>(false);
     // Define columns for the table
     const columns = [
@@ -156,27 +156,9 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             filter: (visit: Visit) => visit.date.split('T')[0] === todayString
         },
         {
-            key: 'this-week',
-            label: 'This Week',
-            filter: (visit: Visit) => {
-                const visitDate = visit.date.split('T')[0];
-                return visitDate >= thisWeekStart && visitDate <= thisWeekEnd;
-            }
-        },
-        {
-            key: 'pending',
-            label: 'Pending',
-            filter: (visit: Visit) => visit.status === 'Pending'
-        },
-        {
-            key: 'completed',
-            label: 'Completed',
-            filter: (visit: Visit) => visit.status === 'Completed'
-        },
-        {
-            key: 'cancelled',
-            label: 'Cancelled',
-            filter: (visit: Visit) => visit.status === 'Cancelled'
+            key: 'all-days',
+            label: 'All Days',
+            filter: () => true
         }
     ];
 
@@ -271,7 +253,10 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                             className="input input-bordered w-full max-w-xs" 
                             placeholder="e.g. 7.7187474"
                             value={startLat}
-                            onChange={(e) => setStartLat(e.target.value)}
+                            onChange={(e) => {
+                                setStartLat(e.target.value);
+                                localStorage.setItem('lastLat', e.target.value);
+                            }}
                         />
                     </div>
                     <div>
@@ -281,7 +266,10 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                             className="input input-bordered w-full max-w-xs" 
                             placeholder="e.g. 80.3625707"
                             value={startLng}
-                            onChange={(e) => setStartLng(e.target.value)}
+                            onChange={(e) => {
+                                setStartLng(e.target.value);
+                                localStorage.setItem('lastLng', e.target.value);
+                            }}
                         />
                     </div>
                     <button 

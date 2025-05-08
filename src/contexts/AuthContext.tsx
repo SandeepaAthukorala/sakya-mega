@@ -2,27 +2,15 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { User, AuthContextType, UserRole } from '../types';
 import { supabase } from '../supabaseClient';
 
-// Define the AuthContextType interface
-interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  register: (firstName: string, lastName: string, email: string, password: string, role: UserRole) => Promise<void>;
-}
-
-// Create the context with a default value
 const AuthContext = createContext<AuthContextType>({
   user: null,
   isAuthenticated: false,
   isLoading: true,
-  login: async () => { throw new Error('Login function not implemented'); }, // Provide a default implementation
-  logout: async () => { throw new Error('Logout function not implemented'); }, // Provide a default implementation
-  register: async () => { throw new Error('Register function not implemented'); }, // Provide a default implementation
+  login: async () => {},
+  logout: async () => {},
+  register: async () => {},
 });
 
-// Custom hook to use the auth context
 export const useAuth = () => useContext(AuthContext);
 
 interface AuthProviderProps {
@@ -33,118 +21,177 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchUserData = async (email: string): Promise<User | null> => {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (error) {
+        console.error('Fetch user error:', error);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Unexpected fetch error:', err);
+      return null;
+    }
+  };
+
+  const initializeUser = async (sessionUserEmail: string | null) => {
+    if (!sessionUserEmail) {
+      setUser(null);
+      return;
+    }
+
+    const userData = await fetchUserData(sessionUserEmail);
+    if (userData) {
+      setUser(userData);
+    } else {
+      console.warn('User data missing, signing out...');
+      await supabase.auth.signOut();
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
-    const getSession = async () => {
+    let active = true;
+    let initialLoadComplete = false;
+
+    const init = async () => {
+      // Initialize with the current session instead of signing out
       setIsLoading(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-        if (session) {
-          // Fetch user details using ID
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*') // Select all columns including 'access'
-            .eq('id', session.user.id)
-            .single();
+        if (!active) return;
 
-          if (userError) {
-            console.error('Error fetching user details:', userError);
-            setUser(null); // Clear user if fetch fails
-          } else {
-            setUser(userData);
-          }
+        if (error) {
+          console.error('Get session error:', error);
+          setUser(null);
+        } else if (session?.user) {
+          await initializeUser(session.user.email ?? null);
         } else {
           setUser(null);
         }
-      } catch (error) {
-        console.error('Error in getSession:', error);
+      } catch (err) {
+        console.error('Session initialization error:', err);
         setUser(null);
       } finally {
-        setIsLoading(false);
+        if (active) {
+          initialLoadComplete = true;
+          setIsLoading(false);
+        }
       }
     };
 
-    getSession();
+    init();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        try {
-          // Fetch user details using ID on auth state change
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*') // Select all columns including 'access'
-            .eq('id', session.user.id)
-            .single();
-
-          if (userError) {
-            console.error('Error fetching user details on auth change:', userError);
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!active) return;
+        
+        // Only handle auth state changes after initial load is complete
+        // to prevent race conditions
+        if (initialLoadComplete) {
+          setIsLoading(true);
+          
+          try {
+            if (session?.user) {
+              // User is logged in, initialize user data
+              await initializeUser(session.user.email ?? null);
+            } else {
+              // User is logged out or session is invalid
+              setUser(null);
+            }
+          } catch (err) {
+            console.error('Auth state change error:', err);
             setUser(null);
-          } else {
-            setUser(userData);
+          } finally {
+            if (active) {
+              setIsLoading(false);
+            }
           }
-        } catch (error) {
-          console.error('Error fetching user on auth state change:', error);
-          setUser(null);
         }
-      } else {
-        setUser(null);
       }
-      // No need to set loading here as getSession handles initial load
-    });
+    );
 
-    // Cleanup listener on component unmount
     return () => {
-      authListener?.subscription.unsubscribe();
+      active = false;
+      listener.subscription.unsubscribe();
     };
   }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      // 1. Sign in with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) {
-        console.error('Supabase login error:', authError);
-        throw new Error('Invalid email or password.'); // Generic error for security
+      if (error) throw error;
+      if (!data.user) throw new Error('Invalid login response');
+
+      // Directly set user data from the login response to prevent race conditions
+      const userData = await fetchUserData(email);
+      if (!userData) {
+        throw new Error('Failed to fetch user data');
       }
-
-      if (!authData.session || !authData.user) {
-        throw new Error('Login failed: No session or user data returned.');
-      }
-
-      // 2. Fetch user details from 'users' table using the ID
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*') // Select all columns including 'access'
-        .eq('id', authData.user.id)
-        .single();
-
-      if (userError) {
-        console.error('Error fetching user details after login:', userError);
-        // Log out the user if fetching details fails after successful auth
-        await supabase.auth.signOut();
-        throw new Error('Login failed: Could not retrieve user details.');
-      }
-
-      // 3. Check the 'access' status
-      if (userData && userData.access === false) {
-        // Log out the user if access is denied
-        await supabase.auth.signOut();
-        throw new Error('Login Failed: Access Denied');
-      }
-
-      // 4. Set user state (Supabase onAuthStateChange might also handle this, but setting explicitly ensures immediate update)
       setUser(userData);
+    } catch (err) {
+      console.error('Login failed:', err);
+      setUser(null);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    } catch (error) {
-      console.error('Login process error:', error);
-      setUser(null); // Ensure user state is null on any login failure
-      // Re-throw the specific error for the UI to catch
-      throw error;
+  const register = async (
+    firstName: string,
+    lastName: string,
+    email: string,
+    password: string,
+    role: UserRole
+  ) => {
+    setIsLoading(true);
+    try {
+      if (!['Admin', 'Ref'].includes(role)) {
+        throw new Error('Invalid role.');
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { first_name: firstName, last_name: lastName, role },
+        },
+      });
+
+      if (error) throw error;
+      if (!data.user) throw new Error('No user returned from signUp');
+
+      const { error: dbError } = await supabase.from('users').insert({
+        id: data.user.id,
+        email,
+        first_name: firstName,
+        last_name: lastName,
+        role,
+      });
+
+      if (dbError) throw dbError;
+
+      await initializeUser(email);
+    } catch (err) {
+      console.error('Registration failed:', err);
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -153,91 +200,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signOut();
+      // Clear session and user data
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
       if (error) throw error;
-      setUser(null); // Clear user state immediately
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Optionally handle logout error display
+      setUser(null);
+      
+      // Clear local storage and session storage to ensure complete logout
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (err) {
+      console.error('Logout error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (firstName: string, lastName: string, email: string, password: string, role: UserRole) => {
-    setIsLoading(true);
-    try {
-      // 1. Sign up with Supabase Auth
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (signUpError) {
-        console.error('Supabase sign up error:', signUpError);
-        // Check for specific errors like 'User already registered'
-        if (signUpError.message.includes('User already registered')) {
-          throw new Error('An account with this email already exists.');
-        }
-        throw new Error('Registration failed. Please try again.');
-      }
-
-      if (!authData.user) {
-        throw new Error('Registration failed: No user data returned after sign up.');
-      }
-
-      // 2. Insert user details into 'users' table
-      const { error: insertError } = await supabase
-        .from('users')
-        .insert({
-          id: authData.user.id, // Use the ID from Supabase Auth
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          role,
-          access: true, // Default access to true for new registrations
-        });
-
-      if (insertError) {
-        console.error('Error inserting user details:', insertError);
-        // Optional: Attempt to delete the auth user if insert fails?
-        // await supabase.auth.api.deleteUser(authData.user.id) // Requires admin privileges
-        throw new Error('Registration failed: Could not save user details.');
-      }
-
-      // 3. Set user state (onAuthStateChange will likely handle this, but explicit set can be faster)
-      // Fetch the newly created user data to ensure state is consistent
-      const { data: newUser, error: fetchNewUserError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
-
-      if (fetchNewUserError || !newUser) {
-        console.error('Error fetching newly registered user:', fetchNewUserError);
-        // User is authenticated but details fetch failed, proceed with caution or log out
-        setUser(null); // Or set a minimal user object based on authData.user
-      } else {
-        setUser(newUser);
-      }
-
-    } catch (error) {
-      console.error('Registration process error:', error);
-      setUser(null); // Ensure user state is null on registration failure
-      throw error; // Re-throw for UI
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const value = {
-    user,
-    isAuthenticated: !!user,
-    isLoading,
-    login,
-    logout,
-    register,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        login,
+        logout,
+        register,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
