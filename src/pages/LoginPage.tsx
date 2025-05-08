@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogIn, AlertCircle } from 'lucide-react';
@@ -9,8 +9,20 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Effect to handle redirection after successful login
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Redirect based on user role
+      if (user.role === 'Admin') {
+        navigate('/admin');
+      } else if (user.role === 'Ref') {
+        navigate('/visits');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +31,7 @@ const LoginPage: React.FC = () => {
     
     try {
       await login(email, password);
-      navigate('/dashboard');
+      // Redirection will be handled by the useEffect
     } catch (err) {
       setError('Invalid email or password. Please try again.');
     } finally {
