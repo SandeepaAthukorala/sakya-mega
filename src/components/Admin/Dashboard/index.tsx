@@ -193,7 +193,7 @@ const AdminDashboard: React.FC = () => {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8 max-w-7xl bg-gray-50 min-h-screen">
+        <div className="container mx-auto px-4 py-8 max-w-full bg-gray-50 min-h-screen">
             <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
             
             {/* Stats Section */}

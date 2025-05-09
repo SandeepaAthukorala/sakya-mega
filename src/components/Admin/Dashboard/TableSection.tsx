@@ -1,6 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../../supabaseClient';
 import { EditingCellState } from '../types';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Draggable row component for table
+interface DraggableRowProps {
+  id: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+const DraggableRow: React.FC<DraggableRowProps> = ({ id, children, className = '' }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+    zIndex: isDragging ? 999 : 'auto',
+    cursor: 'grab'
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`${className} ${isDragging ? 'bg-base-200' : ''}`}
+    >
+      {children}
+    </tr>
+  );
+};
+
 
 interface TableSectionProps {
   title: string;
@@ -33,6 +75,7 @@ interface TableSectionProps {
   setIsLoadingInline: React.Dispatch<React.SetStateAction<boolean>>;
   inputRef: React.RefObject<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
   dateField?: string; // Field name for date filtering
+  isDraggable?: boolean; // Whether rows can be dragged for reordering
 }
 
 const TableSection: React.FC<TableSectionProps> = ({
@@ -53,7 +96,8 @@ const TableSection: React.FC<TableSectionProps> = ({
   isLoadingInline,
   setIsLoadingInline,
   inputRef,
-  dateField
+  dateField,
+  isDraggable = false
 }) => {
   // State for filtering and search
   const [searchTerm, setSearchTerm] = useState('');
@@ -181,7 +225,63 @@ const TableSection: React.FC<TableSectionProps> = ({
     setIsLoadingInline(true);
     
     try {
-      // Update in Supabase
+      // Special handling for route_id changes in visits table
+      if (tableName === 'visits' && editingCell.field === 'route_id') {
+        const visitToUpdate = data.find(item => item.id === editingCell.rowId);
+        if (visitToUpdate) {
+          // If changing route_id
+          if (visitToUpdate.route_id !== editValue) {
+            // If assigning to a route (not removing from a route)
+            if (editValue) {
+              // Find the highest order in the target route
+              const visitsInTargetRoute = data.filter(v => v.route_id === editValue);
+              const highestOrder = visitsInTargetRoute.length > 0 
+                ? Math.max(...visitsInTargetRoute.map(v => v.order || 0)) 
+                : 0;
+              
+              // Set the order to be highest + 1
+              const newOrder = highestOrder + 1;
+              
+              // Update both route_id and order in Supabase
+              const { error } = await supabase
+                .from('visits')
+                .update({ route_id: editValue, order: newOrder })
+                .eq('id', editingCell.rowId);
+              
+              if (error) throw error;
+              
+              // Update local state
+              setData(prevData => 
+                prevData.map(item => 
+                  item.id === editingCell.rowId 
+                    ? { ...item, route_id: editValue, order: newOrder } 
+                    : item
+                )
+              );
+            } else {
+              // If removing from a route, set order to null
+              const { error } = await supabase
+                .from('visits')
+                .update({ route_id: null, order: null })
+                .eq('id', editingCell.rowId);
+              
+              if (error) throw error;
+              
+              // Update local state
+              setData(prevData => 
+                prevData.map(item => 
+                  item.id === editingCell.rowId 
+                    ? { ...item, route_id: null, order: null } 
+                    : item
+                )
+              );
+            }
+            return; // Exit early as we've handled the update
+          }
+        }
+      }
+      
+      // Standard update for other fields
       const { error } = await supabase
         .from(tableName)
         .update({ [editingCell.field]: editValue })
@@ -311,7 +411,7 @@ const TableSection: React.FC<TableSectionProps> = ({
   };
 
   return (
-    <section id={itemType + 's'} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+    <section id={itemType + 's'} className="bg-white rounded-lg shadow-md p-6 border border-gray-200 w-full max-w-full overflow-x-auto mx-auto">
       {/* Header with collapse toggle */}
       <div className="flex justify-between items-center mb-4">
         <h2 
@@ -337,25 +437,43 @@ const TableSection: React.FC<TableSectionProps> = ({
           {/* Filters and Search */}
           <div className="flex flex-col md:flex-row justify-between mb-4 gap-4">
             <div className="flex flex-col gap-4 w-full">
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex flex-col gap-2">
                 {filters.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    <button 
-                      className={`btn ${activeFilter === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm`}
-                      onClick={() => setActiveFilter('all')}
-                    >
-                      All
-                    </button>
-                    {filters.map(filter => (
+                  <>
+                    {/* Regular filters */}
+                    <div className="flex flex-wrap gap-2">
                       <button 
-                        key={filter.key}
-                        className={`btn ${activeFilter === filter.key ? 'btn-primary' : 'btn-outline'} btn-sm`}
-                        onClick={() => setActiveFilter(filter.key)}
+                        className={`btn ${activeFilter === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm`}
+                        onClick={() => setActiveFilter('all')}
                       >
-                        {filter.label}
+                        All
                       </button>
-                    ))}
-                  </div>
+                      {filters.filter(filter => !filter.key.startsWith('route-') && filter.key !== 'no-route').map(filter => (
+                        <button 
+                          key={filter.key}
+                          className={`btn ${activeFilter === filter.key ? 'btn-primary' : 'btn-outline'} btn-sm`}
+                          onClick={() => setActiveFilter(filter.key)}
+                        >
+                          {filter.label}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* Route filters on a new line */}
+                    {filters.some(filter => filter.key.startsWith('route-') || filter.key === 'no-route') && (
+                      <div className="flex flex-wrap gap-2">
+                        {filters.filter(filter => filter.key.startsWith('route-') || filter.key === 'no-route').map(filter => (
+                          <button 
+                            key={filter.key}
+                            className={`btn ${activeFilter === filter.key ? 'btn-error' : 'btn-outline'} btn-xs`}
+                            onClick={() => setActiveFilter(filter.key)}
+                          >
+                            {filter.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
                 
                 <div className="flex gap-2 ml-auto">
@@ -503,8 +621,8 @@ const TableSection: React.FC<TableSectionProps> = ({
           </div>
           
           {/* Table */}
-          <div className="overflow-x-auto">
-            <table className="table w-full border-collapse">
+          <div className="overflow-x-auto w-full">
+            <table className="table w-full min-w-full border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   {columns.map(column => (
@@ -517,27 +635,34 @@ const TableSection: React.FC<TableSectionProps> = ({
               </thead>
               <tbody>
                 {filteredData.length > 0 ? (
-                  filteredData.map(item => (
-                    <tr key={item.id} className="hover:bg-gray-50 border-b border-gray-200">
-                      {columns.map(column => (
-                        <td 
-                          key={`${item.id}-${column.key}`} 
-                          className="px-4 py-2"
-                          onDoubleClick={() => column.editable && handleCellDoubleClick(item.id, column.key)}
-                        >
-                          {renderCell(item, column)}
+                  filteredData.map(item => {
+                    const RowComponent = isDraggable ? DraggableRow : 'tr';
+                    return (
+                      <RowComponent 
+                        key={item.id} 
+                        id={item.id}
+                        className="hover:bg-gray-50 border-b border-gray-200"
+                      >
+                        {columns.map(column => (
+                          <td 
+                            key={`${item.id}-${column.key}`} 
+                            className="px-4 py-2"
+                            onDoubleClick={() => column.editable && handleCellDoubleClick(item.id, column.key)}
+                          >
+                            {renderCell(item, column)}
+                          </td>
+                        ))}
+                        <td className="px-4 py-2">
+                          <button 
+                            className="btn btn-sm btn-error btn-outline"
+                            onClick={() => handleDeleteItem(item.id)}
+                          >
+                            Delete
+                          </button>
                         </td>
-                      ))}
-                      <td className="px-4 py-2">
-                        <button 
-                          className="btn btn-sm btn-error btn-outline"
-                          onClick={() => handleDeleteItem(item.id)}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                      </RowComponent>
+                    );
+                  })
                 ) : (
                   <tr>
                     <td colSpan={columns.length + 1} className="text-center py-4">

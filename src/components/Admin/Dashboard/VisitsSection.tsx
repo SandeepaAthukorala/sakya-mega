@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Visit, User } from '../../../types';
-import { Item, EditingCellState, NewVisitDataType } from '../types';
+import { Item, EditingCellState, NewVisitDataType, Route } from '../types';
 import { HighlightMatch } from './index';
 import TableSection from './TableSection';
 import { supabase } from '../../../supabaseClient';
 import { Map } from 'lucide-react';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface VisitsSectionProps {
     visits: Visit[];
@@ -49,18 +52,99 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
     thisWeekEnd,
     formatDateDisplay
 }) => {
-    // State for proximity sorting
-    const [startLat, setStartLat] = useState(() => localStorage.getItem('lastLat') || '');
-    const [startLng, setStartLng] = useState(() => localStorage.getItem('lastLng') || '');
-    const [sortedByProximity, setSortedByProximity] = useState<boolean>(false);
+    // State for routes data
+    const [routesData, setRoutesData] = useState<Route[]>([]);
+    
+    // Fetch routes data for ID formatting
+    useEffect(() => {
+        const fetchRoutes = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('routes')
+                    .select('*');
+                
+                if (error) throw error;
+                if (data) setRoutesData(data);
+            } catch (error) {
+                console.error('Error fetching routes:', error);
+            }
+        };
+        
+        fetchRoutes();
+    }, []);
+    
+    // Format ID for display
+    const formatVisitId = (visit: Visit) => {
+        // If order or route_id is missing, use a portion of the UUID
+        if (!visit.route_id || typeof visit.order === 'undefined' || visit.order === null) {
+            return visit.id.substring(0, 8);
+        }
+        
+        const route = routesData.find(r => r.id === visit.route_id);
+        const routeName = route?.name || 'Unknown';
+        const routeNumber = route?.number || 0;
+        
+        return `${visit.order} ${routeName} ${routeNumber}`;
+    };
+    
+    // Sort visits by order if available, otherwise by formatted ID
+    const sortedVisits = useMemo(() => {
+        return [...visits].sort((a, b) => {
+            // First sort by route_id
+            if (a.route_id !== b.route_id) {
+                if (!a.route_id) return 1;
+                if (!b.route_id) return -1;
+                return a.route_id.localeCompare(b.route_id);
+            }
+            
+            // Then sort by order if both have order values
+            if (typeof a.order === 'number' && typeof b.order === 'number') {
+                return a.order - b.order;
+            }
+            
+            // Fall back to ID comparison if order is not available
+            const aId = formatVisitId(a);
+            const bId = formatVisitId(b);
+            return aId.localeCompare(bId);
+        });
+    }, [visits, routesData]);
+    
+    // Component state
     // Define columns for the table
     const columns = [
+        {
+            key: 'id',
+            header: 'ID',
+            editable: false,
+            filterable: true,
+            render: (visit: Visit) => formatVisitId(visit)
+        },
         {
             key: 'date',
             header: 'Date',
             editable: true,
             filterable: true,
             render: (visit: Visit) => formatDateDisplay(visit.date)
+        },
+        {
+            key: 'route_id',
+            header: 'Route',
+            editable: true,
+            filterable: true,
+            type: 'select',
+            options: ['', ...routesData.map(route => route.id)],
+            render: (visit: Visit) => (
+                <div>
+                    {visit.route_id ? (
+                        <>
+                            {routesData.find(route => route.id === visit.route_id)?.name || 'Unknown'} 
+                            {routesData.find(route => route.id === visit.route_id)?.number || ''}
+                        </>
+                    ) : (
+                        <span className="text-neutral-400">No Route</span>
+                    )}
+                </div>
+            )
         },
         {
             key: 'ref_id',
@@ -161,6 +245,28 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             filter: () => true
         }
     ];
+    
+    // Add route filters based on available routes
+    const routeFilters = useMemo(() => {
+        // Create a filter for visits with no route assigned
+        const noRouteFilter = {
+            key: 'no-route',
+            label: 'No Route',
+            filter: (visit: Visit) => !visit.route_id
+        };
+        
+        // Create filters for each route
+        const routeSpecificFilters = routesData.map(route => ({
+            key: `route-${route.id}`,
+            label: `${route.name} ${route.number}`,
+            filter: (visit: Visit) => visit.route_id === route.id
+        }));
+        
+        return [noRouteFilter, ...routeSpecificFilters];
+    }, [routesData]);
+    
+    // Combine all filters
+    const allFilters = [...filters, ...routeFilters];
 
     // Handle adding a new visit
     const handleAddVisit = async () => {
@@ -173,7 +279,9 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             ref_id: allRefs.length > 0 ? allRefs[0].id : null,
             address: '',
             location: { lat: 0, lng: 0 },
-            mobile_phone: ''
+            mobile_phone: '',
+            route_id: null,
+            order: null
         };
 
         try {
@@ -191,121 +299,132 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             console.error('Error adding new visit:', error);
         }
     };
-
-    // Calculate distance between two points using Haversine formula
-    const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-        const R = 6371; // Radius of the Earth in km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c; // Distance in km
-    };
-
-    // Sort visits by proximity to starting location
-    const handleSortByProximity = () => {
-        // Validate inputs
-        const lat = parseFloat(startLat);
-        const lng = parseFloat(startLng);
+    
+    // Handle drag end event for reordering visits
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
         
-        if (isNaN(lat) || isNaN(lng)) {
-            alert('Please enter valid latitude and longitude values');
+        if (!over || active.id === over.id) {
             return;
         }
         
-        // Create a copy of visits with distance calculated
-        const visitsWithDistance = visits.map(visit => {
-            // Check if location data exists and is valid
-            const hasValidLocation = visit.location && 
-                typeof visit.location.lat === 'number' && 
-                typeof visit.location.lng === 'number' && 
-                (visit.location.lat !== 0 || visit.location.lng !== 0);
-            
-            // Calculate distance or set to Infinity if no valid location
-            const distance = hasValidLocation 
-                ? calculateDistance(lat, lng, visit.location.lat, visit.location.lng)
-                : Infinity;
-                
-            return { ...visit, distance };
+        // Find the dragged visit and the target visit
+        const draggedVisit = visits.find(visit => visit.id === active.id);
+        const targetVisit = visits.find(visit => visit.id === over.id);
+        
+        if (!draggedVisit || !targetVisit) {
+            return;
+        }
+        
+        // Only allow reordering within the same route
+        if (draggedVisit.route_id !== targetVisit.route_id) {
+            return;
+        }
+        
+        // Update the local state first for immediate UI feedback
+        const oldIndex = sortedVisits.findIndex(visit => visit.id === active.id);
+        const newIndex = sortedVisits.findIndex(visit => visit.id === over.id);
+        
+        const newVisits = arrayMove(sortedVisits, oldIndex, newIndex);
+        
+        // Get only the visits that belong to the same route as the dragged visit
+        const routeVisits = newVisits.filter(visit => visit.route_id === draggedVisit.route_id);
+        
+        // Assign new order values (1-based) while preserving the original order values
+        // This ensures we only update the order field in the database when necessary
+        const updatedVisits = routeVisits.map((visit, index) => {
+            const newOrder = index + 1;
+            // Only update the order if it's different from the current order
+            return visit.order !== newOrder ? {
+                ...visit,
+                order: newOrder
+            } : visit;
         });
         
-        // Sort by distance (ascending)
-        const sorted = [...visitsWithDistance].sort((a, b) => a.distance - b.distance);
+        // Update the local state
+        setVisits(prev => {
+            const otherVisits = prev.filter(visit => visit.route_id !== draggedVisit.route_id);
+            return [...otherVisits, ...updatedVisits];
+        });
         
-        // Update visits with sorted data
-        setVisits(sorted);
-        setSortedByProximity(true);
+        // Update the database - only update visits whose order has changed
+        try {
+            // Create an array of updates for visits whose order has changed
+            const visitsToUpdate = updatedVisits.filter(visit => {
+                const originalVisit = visits.find(v => v.id === visit.id);
+                return originalVisit && originalVisit.order !== visit.order;
+            });
+            
+            if (visitsToUpdate.length === 0) {
+                return; // No order changes needed
+            }
+            
+            // Batch update all changed visits
+            for (const visit of visitsToUpdate) {
+                const { error } = await supabase
+                    .from('visits')
+                    .update({ order: visit.order })
+                    .eq('id', visit.id);
+                
+                if (error) {
+                    console.error(`Error updating visit order for ID ${visit.id}:`, error);
+                }
+            }
+            
+            console.log(`Updated order for ${visitsToUpdate.length} visits`);
+        } catch (error) {
+            console.error('Error updating visit orders:', error);
+        }
     };
 
+
+
+    // Set up DnD sensors
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Minimum drag distance before activation
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+    
     return (
         <>
-            {/* Proximity Sorting UI */}
-            <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200 mb-4">
-                <h3 className="text-lg font-bold mb-3">Sort Visits by Proximity</h3>
-                <div className="flex flex-wrap gap-3 items-end">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Latitude</label>
-                        <input 
-                            type="text" 
-                            className="input input-bordered w-full max-w-xs" 
-                            placeholder="e.g. 7.7187474"
-                            value={startLat}
-                            onChange={(e) => {
-                                setStartLat(e.target.value);
-                                localStorage.setItem('lastLat', e.target.value);
-                            }}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Longitude</label>
-                        <input 
-                            type="text" 
-                            className="input input-bordered w-full max-w-xs" 
-                            placeholder="e.g. 80.3625707"
-                            value={startLng}
-                            onChange={(e) => {
-                                setStartLng(e.target.value);
-                                localStorage.setItem('lastLng', e.target.value);
-                            }}
-                        />
-                    </div>
-                    <button 
-                        className="btn btn-primary"
-                        onClick={handleSortByProximity}
-                    >
-                        Sort by Nearest
-                    </button>
-                    {sortedByProximity && (
-                        <div className="text-sm text-success">
-                            Visits sorted by proximity to ({startLat}, {startLng})
-                        </div>
-                    )}
-                </div>
-            </div>
-            
-            <TableSection
-                title="Visits"
-                data={visits}
-                setData={setVisits}
-                columns={columns}
-                tableName="visits"
-                itemType="visit"
-                searchPlaceholder="Search visits..."
-                filters={filters}
-                onAddItem={handleAddVisit}
-                addButtonText="Add Visit"
-                editingCell={editingCell}
-                setEditingCell={setEditingCell}
-                editValue={editValue}
-                setEditValue={setEditValue}
-                isLoadingInline={isLoadingInline}
-                setIsLoadingInline={setIsLoadingInline}
-                inputRef={inputRef}
-                dateField="date"
-            />
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+            >
+                <SortableContext 
+                    items={sortedVisits.map(visit => visit.id)}
+                    strategy={horizontalListSortingStrategy}
+                >
+                    <TableSection
+                        title="Visits"
+                        data={sortedVisits}
+                        setData={setVisits}
+                        columns={columns}
+                        tableName="visits"
+                        itemType="visit"
+                        searchPlaceholder="Search visits..."
+                        filters={allFilters}
+                        onAddItem={handleAddVisit}
+                        addButtonText="Add Visit"
+                        editingCell={editingCell}
+                        setEditingCell={setEditingCell}
+                        editValue={editValue}
+                        setEditValue={setEditValue}
+                        isLoadingInline={isLoadingInline}
+                        setIsLoadingInline={setIsLoadingInline}
+                        inputRef={inputRef}
+                        dateField="date"
+                        isDraggable={true}
+                    />
+                </SortableContext>
+            </DndContext>
         </>
     );
 };

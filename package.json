@@ -11,12 +11,17 @@
     "generate-types": "supabase gen types typescript --project-id lpddflfnjkawkipirjgq > src/types/supabase.ts"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@react-google-maps/api": "^2.19.2",
     "@supabase/supabase-js": "^2.49.4",
+    "@types/react-beautiful-dnd": "^13.1.8",
     "antd": "^5.24.9",
     "date-fns": "^2.30.0",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
+    "react-beautiful-dnd": "^13.1.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.5.2",
     "react-router-dom": "^6.22.2",
