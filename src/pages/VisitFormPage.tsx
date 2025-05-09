@@ -15,7 +15,13 @@ const filterConfig = {
     trim: true,
 };
 
-const customFilter = (option: any, rawInput: string) => {
+const formatOptionLabel = (option: any) => (
+    <div>
+      <span>{option.label}</span>
+    </div>
+  );
+
+  const customFilter = (option: any, rawInput: string) => {
     return createFilter(filterConfig)(option, rawInput);
 };
 // --- End Custom Filter ---
@@ -79,12 +85,13 @@ const VisitFormPage: React.FC = () => {
     const [notes, setNotes] = useState('');
 
     // --- Item Selection States ---
-    const [items, setItems] = useState<{ id: string; item_name: string; item_number: number }[]>([]);
-    const [currentItemToAdd, setCurrentItemToAdd] = useState<SelectOption | null>(null); // Item currently selected in the dropdown
+    const [items, setItems] = useState<{ id: string; item_name: string; item_number: number; value: number }[]>([]);
+    const [currentItemToAdd, setCurrentItemToAdd] = useState<SelectOption | null>(null);
+  const formatItemLabel = (item: { item_name: string; value: number }) => `${item.item_name} (Rs.${item.value})`; // Item currently selected in the dropdown
     const [addedItems, setAddedItems] = useState<SelectOption[]>([]); // List of items added (can have duplicates)
     // --- End Item Selection States ---
 
-    const [routeId, setRouteId] = useState(''); // Route remains single selection
+    const [routeId, setRouteId] = useState<SelectOption | null>(null);
     const [routes, setRoutes] = useState<{ id: string; name: string; number: number }[]>([]);
 
     const [isGettingLocation, setIsGettingLocation] = useState(false);
@@ -125,7 +132,7 @@ const VisitFormPage: React.FC = () => {
             try {
                 const { data, error } = await supabase
                     .from('items')
-                    .select('id, item_name, item_number');
+                    .select('id, item_name, item_number, value');
 
                 if (error) {
                     console.error('Error fetching items:', error);
@@ -146,7 +153,7 @@ const VisitFormPage: React.FC = () => {
     // --- Map fetched data to options for react-select ---
     const itemOptions: SelectOption[] = items.map(item => ({
         value: item.id, // Use item ID as the value
-        label: `${item.item_name} (${item.item_number})`
+        label: `${item.item_name} (${item.item_number}) - Rs.${item.value ?? 0}`
     }));
 
     const routeOptions: SelectOption[] = routes.map(route => ({
@@ -251,7 +258,7 @@ const VisitFormPage: React.FC = () => {
                 status: 'Pending',
                 notes: notes || null, // Send null if empty
                 item_id: itemIds, // Send array of item IDs
-                route_id: routeId,
+                route_id: routeId?.value || null,
             };
 
             console.log("Submitting Visit Data:", visitData); // Log data before sending
@@ -438,6 +445,7 @@ const VisitFormPage: React.FC = () => {
                                         isSearchable
                                         isClearable // Allow clearing the selection
                                         filterOption={customFilter}
+                                        formatOptionLabel={formatOptionLabel}
                                         className="react-select-container"
                                         classNamePrefix="react-select"
                                     />
@@ -491,19 +499,14 @@ const VisitFormPage: React.FC = () => {
                                     <Route size={18} className="text-neutral-500" />
                                 </div>
                                 <Select
-                                    inputId="routeId"
-                                    options={routeOptions}
-                                    value={routeOptions.find(option => option.value === routeId)}
-                                    onChange={(selectedOption) => setRouteId(selectedOption?.value || '')}
-                                    placeholder="Select Route"
-                                    styles={customStyles}
-                                    isSearchable
-                                    isClearable
-                                    // 'required' validation is handled in handleSubmit
-                                    filterOption={customFilter}
-                                    className="react-select-container"
-                                    classNamePrefix="react-select"
-                                />
+  options={routeOptions}
+  value={routeId}
+  onChange={(selected) => setRouteId(selected)}
+  styles={customStyles}
+  placeholder="Select route..."
+  filterOption={customFilter}
+  formatOptionLabel={formatOptionLabel}
+/>
                             </div>
                         </div>
 

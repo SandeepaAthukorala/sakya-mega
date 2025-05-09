@@ -48,12 +48,12 @@ const ItemsSection: React.FC<ItemsSectionProps> = ({
             )
         },
         {
-            key: 'created_at',
-            header: 'Created',
+            key: 'value',
+            header: 'Value',
             editable: false,
             filterable: true,
             render: (item: Item) => (
-                <span>{item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'}</span>
+                <span>{item.value ? `Rs.${item.value.toFixed(2)}` : 'N/A'}</span>
             )
         }
     ];
