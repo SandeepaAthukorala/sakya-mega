@@ -50,27 +50,20 @@ const RoutesSection: React.FC<RoutesSectionProps> = ({
                 <div className="font-medium">{route.name}</div>
             )
         },
-        {
-            key: 'description',
-            header: 'Description',
-            editable: true,
-            filterable: true
-        },
+        // REMOVED DESCRIPTION COLUMN
         {
             key: 'ref_id',
             header: 'Assigned To',
             editable: true,
             filterable: true,
             type: 'select',
-            options: ['', ...allRefs.map(ref => ({ 
-                value: ref.id, 
-                label: `${ref.first_name || 'Unknown'} ${ref.last_name || ''}`.trim() 
-            }))],
+            options: ['', ...allRefs.map(ref => `${ref.id}|${ref.first_name} ${ref.last_name}`)],
             render: (route: Route) => (
                 <div>
                     {route.ref_id ? (
                         <>
-                            {allRefs.find(ref => ref.id === route.ref_id)?.first_name || 'Unknown'}{' '}
+                            {allRefs.find(ref => ref.id === route.ref_id)?.first_name || 'Unknown'}
+                            {' '}
                             {allRefs.find(ref => ref.id === route.ref_id)?.last_name || ''}
                         </>
                     ) : (

@@ -2,10 +2,10 @@
 // npm install react-select
 
 import React, { useState, useEffect } from 'react';
-import Select, { createFilter, SingleValue } from 'react-select'; // Use SingleValue for the item selector
+import Select, { createFilter, SingleValue } from 'react-select';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Phone, User, FileText, Check, ChevronDown, Calendar, Route, Package, Plus, Trash2 } from 'lucide-react'; // Added Plus, Trash2
+import { MapPin, Phone, User, FileText, Check, ChevronDown, Calendar, Route, Package, Plus, Trash2, ClipboardList } from 'lucide-react'; // Added ClipboardList, Plus, Trash2
 import { supabase } from '../supabaseClient';
 
 // --- Custom Filter for react-select ---
@@ -21,7 +21,7 @@ const formatOptionLabel = (option: any) => (
     </div>
   );
 
-  const customFilter = (option: any, rawInput: string) => {
+const customFilter = (option: any, rawInput: string) => {
     return createFilter(filterConfig)(option, rawInput);
 };
 // --- End Custom Filter ---
@@ -56,7 +56,6 @@ const customStyles = {
         ...provided,
         color: '#1f2937',
     }),
-    // multiValue styles removed as item selector is now single-select for adding
     dropdownIndicator: (provided: any) => ({
         ...provided,
         padding: '8px',
@@ -78,8 +77,13 @@ interface SelectOption {
 
 const VisitFormPage: React.FC = () => {
     const [buyerName, setBuyerName] = useState('');
-    const [mobile_phone, setMobilePhone] = useState('');
-    const [land_phone, setLandPhone] = useState('');
+    // States for the number fields from SQL schema
+    const [number_one, setNumberOne] = useState('');
+    const [number_two, setNumberTwo] = useState('');
+    const [number_three, setNumberThree] = useState('');
+    const [number_four, setNumberFour] = useState('');
+    const [billNumber, setBillNumber] = useState('');
+
     const [visitType, setVisitType] = useState<'Sample' | 'Sittu' | 'Over'>('Sample');
     const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
     const [notes, setNotes] = useState('');
@@ -87,19 +91,15 @@ const VisitFormPage: React.FC = () => {
     // --- Item Selection States ---
     const [items, setItems] = useState<{ id: string; item_name: string; item_number: number; value: number }[]>([]);
     const [currentItemToAdd, setCurrentItemToAdd] = useState<SelectOption | null>(null);
-  const formatItemLabel = (item: { item_name: string; value: number }) => `${item.item_name} (Rs.${item.value})`; // Item currently selected in the dropdown
-    const [addedItems, setAddedItems] = useState<SelectOption[]>([]); // List of items added (can have duplicates)
-    // --- End Item Selection States ---
+    const [addedItems, setAddedItems] = useState<SelectOption[]>([]); // List of items added
 
     const [routeId, setRouteId] = useState<SelectOption | null>(null);
     const [routes, setRoutes] = useState<{ id: string; name: string; number: number }[]>([]);
 
     const [isGettingLocation, setIsGettingLocation] = useState(false);
     const [locationError, setLocationError] = useState('');
-    // --- Location state only stores lat/lng ---
     const [location, setLocation] = useState<{ lat: number, lng: number } | null>(null);
-    const [address, setAddress] = useState(''); // Separate state for address string
-    // --- End Location state ---
+    const [address, setAddress] = useState('');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -108,13 +108,12 @@ const VisitFormPage: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    // --- Fetch initial data (items and routes) ---
     useEffect(() => {
         const fetchRoutes = async () => {
             try {
                 const { data, error } = await supabase
                     .from('routes')
-                    .select('id, name, number'); // Fetch all routes for now
+                    .select('id, name, number');
 
                 if (error) {
                     console.error('Error fetching routes:', error);
@@ -148,11 +147,10 @@ const VisitFormPage: React.FC = () => {
 
         fetchRoutes();
         fetchItems();
-    }, []); // Fetch on component mount
+    }, []);
 
-    // --- Map fetched data to options for react-select ---
     const itemOptions: SelectOption[] = items.map(item => ({
-        value: item.id, // Use item ID as the value
+        value: item.id,
         label: `${item.item_name} (${item.item_number}) - Rs.${item.value ?? 0}`
     }));
 
@@ -161,24 +159,20 @@ const VisitFormPage: React.FC = () => {
         label: `${route.name} (${route.number})`
     }));
 
-    // --- Function to add the currently selected item to the addedItems list ---
     const handleAddItem = () => {
         if (currentItemToAdd) {
             setAddedItems(prevItems => [...prevItems, currentItemToAdd]);
-            setCurrentItemToAdd(null); // Clear the selection in the dropdown after adding
-            setFormError(''); // Clear error if adding was successful
+            setCurrentItemToAdd(null);
+            setFormError('');
         } else {
-            setFormError("Please select an item to add."); // Inform user if nothing selected
+            setFormError("Please select an item to add.");
         }
     };
 
-    // --- Function to remove an item from the addedItems list by its index ---
     const handleRemoveItem = (indexToRemove: number) => {
         setAddedItems(prevItems => prevItems.filter((_, index) => index !== indexToRemove));
     };
 
-
-    // --- getCurrentLocation (updated to only set lat/lng) ---
     const getCurrentLocation = () => {
         setIsGettingLocation(true);
         setLocationError('');
@@ -192,7 +186,6 @@ const VisitFormPage: React.FC = () => {
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                // Only set lat/lng in the location state
                 setLocation({
                     lat: position.coords.latitude,
                     lng: position.coords.longitude,
@@ -213,13 +206,11 @@ const VisitFormPage: React.FC = () => {
         );
     };
 
-    // --- handleSubmit (updated for separate location/address and multiple items) ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setFormError('');
         setLocationError('');
 
-        // Validation Checks
         if (!location) {
             setLocationError('Please get your current geo-coordinates first');
             return;
@@ -228,7 +219,7 @@ const VisitFormPage: React.FC = () => {
             setFormError('Please enter the address');
             return;
         }
-        if (addedItems.length === 0) { // Check if any items have been added
+        if (addedItems.length === 0) {
             setFormError('Please add at least one item to the visit');
             return;
         }
@@ -240,54 +231,57 @@ const VisitFormPage: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            // Extract IDs from the addedItems list
-            // Your 'item_id' column is text[], so sending IDs (UUIDs/text) is correct.
             const itemIds = addedItems.map(item => item.value);
 
             const visitData = {
                 ref_id: user?.id,
                 buyer_name: buyerName,
-                mobile_phone: mobile_phone,
-                land_phone: land_phone || null, // Send null if empty
-                // Send location object {lat, lng} to jsonb column
+                // Use new state variables for numbers and bill_number
+                number_one: number_one || null,
+                number_two: number_two || null,
+                number_three: number_three || null,
+                number_four: number_four || null,
+                bill_number: billNumber || null,
                 location: { lat: location.lat, lng: location.lng },
-                // Send address string to text column
                 address: address,
                 date: new Date(visitDate).toISOString(),
                 type: visitType,
                 status: 'Pending',
-                notes: notes || null, // Send null if empty
-                item_id: itemIds, // Send array of item IDs
+                notes: notes || null,
+                item_id: itemIds,
                 route_id: routeId?.value || null,
             };
 
-            console.log("Submitting Visit Data:", visitData); // Log data before sending
+            console.log("Submitting Visit Data:", visitData);
 
             const { data, error } = await supabase
                 .from('visits')
                 .insert(visitData)
-                .select() // Select the inserted row to confirm
+                .select()
                 .single();
 
             if (error) {
                 console.error('Error saving visit:', error);
                 setFormError(`Failed to save visit: ${error.message}`);
-                throw error; // Re-throw to be caught by outer catch
+                throw error;
             }
 
             console.log("Visit Saved Successfully:", data);
             setShowSuccess(true);
 
-            // Reset form fields
             setBuyerName('');
-            setMobilePhone('');
-            setLandPhone('');
+            // Reset new number and bill_number states
+            setNumberOne('');
+            setNumberTwo('');
+            setNumberThree('');
+            setNumberFour('');
+            setBillNumber('');
             setVisitType('Sample');
             setVisitDate(new Date().toISOString().split('T')[0]);
             setNotes('');
-            setCurrentItemToAdd(null); // Reset item selector
-            setAddedItems([]);       // Reset added items list
-            setRouteId('');
+            setCurrentItemToAdd(null);
+            setAddedItems([]);
+            setRouteId(null); // Corrected reset for routeId
             setLocation(null);
             setAddress('');
             setFormError('');
@@ -298,8 +292,7 @@ const VisitFormPage: React.FC = () => {
             }, 2000);
 
         } catch (error: any) {
-            // Error logging/setting happens within the try block if it's a Supabase error
-            if (!formError) { // Set a generic error if not already set
+            if (!formError) {
                 console.error('Error in handleSubmit:', error.message);
                 setFormError('An unexpected error occurred while saving the visit.');
             }
@@ -308,14 +301,13 @@ const VisitFormPage: React.FC = () => {
         }
     };
 
-    // --- Success message remains the same ---
     if (showSuccess) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[70vh] animate-fade-in">
-                <div className="bg-green-100 p-4 rounded-full mb-4"> {/* Adjusted background color */}
-                    <Check size={48} className="text-green-600" /> {/* Adjusted icon color */}
+                <div className="bg-green-100 p-4 rounded-full mb-4">
+                    <Check size={48} className="text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2 text-gray-800">Visit Recorded!</h2> {/* Adjusted text color */}
+                <h2 className="text-2xl font-bold mb-2 text-gray-800">Visit Recorded!</h2>
                 <p className="text-neutral-600 text-center mb-6">
                     The visit has been successfully recorded.
                 </p>
@@ -323,25 +315,21 @@ const VisitFormPage: React.FC = () => {
             </div>
         );
     }
-    // --- End Success message ---
 
     return (
         <div className="max-w-xl mx-auto py-6 animate-fade-in">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Record New Visit</h1> {/* Adjusted text color */}
+            <h1 className="text-2xl font-bold mb-6 text-gray-800">Record New Visit</h1>
 
-            {/* Display General Form Error */}
             {formError && (
-                <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-md"> {/* Adjusted error style */}
+                <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-md">
                     {formError}
                 </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Visit Details Card */}
-                <div className="card p-6 bg-white shadow rounded-lg"> {/* Added card styles */}
-                    <h2 className="text-lg font-medium mb-4 text-gray-700">Visit Details</h2> {/* Adjusted text color */}
+                <div className="card p-6 bg-white shadow rounded-lg">
+                    <h2 className="text-lg font-medium mb-4 text-gray-700">Visit Details</h2>
                     <div className="space-y-4">
-                        {/* Visit Date */}
                         <div>
                             <label htmlFor="visitDate" className="block text-sm font-medium text-neutral-700 mb-1">
                                 Visit Date
@@ -361,7 +349,6 @@ const VisitFormPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Buyer Name */}
                         <div>
                             <label htmlFor="buyerName" className="block text-sm font-medium text-neutral-700 mb-1">
                                 Buyer Name
@@ -382,7 +369,7 @@ const VisitFormPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Number One */}
+                        {/* Number One (was mobile_phone) */}
                         <div>
                             <label htmlFor="number_one" className="block text-sm font-medium text-neutral-700 mb-1">
                                 Number 1
@@ -397,14 +384,14 @@ const VisitFormPage: React.FC = () => {
                                     value={number_one}
                                     onChange={(e) => setNumberOne(e.target.value)}
                                     className="input pl-10"
-                                    required
-                                    placeholder="Enter mobile number (e.g., 07xxxxxxxx)"
+                                    required // As per original form, SQL allows NULL
+                                    placeholder="Enter contact number (e.g., 07xxxxxxxx)"
                                     pattern="[0-9]{10,15}"
                                 />
                             </div>
                         </div>
 
-                        {/* Number Two */}
+                        {/* Number Two (was land_phone) */}
                         <div>
                             <label htmlFor="number_two" className="block text-sm font-medium text-neutral-700 mb-1">
                                 Number 2 (Optional)
@@ -424,7 +411,7 @@ const VisitFormPage: React.FC = () => {
                                 />
                             </div>
                         </div>
-
+                        
                         {/* Number Three */}
                         <div>
                             <label htmlFor="number_three" className="block text-sm font-medium text-neutral-700 mb-1">
@@ -486,27 +473,27 @@ const VisitFormPage: React.FC = () => {
                                 />
                             </div>
                         </div>
-
-                        {/* Notes */}
+                        
+                        {/* Notes - Single instance of Notes field */}
                         <div>
                             <label htmlFor="notes" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Notes
+                                Notes (Optional)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 pt-2 flex items-start pointer-events-none z-20">
                                     <ClipboardList size={18} className="text-neutral-500" />
                                 </div>
                                 <textarea
-                                    id="notes"
+                                    id="notes" // ID is now unique
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
-                                    className="input pl-10 h-24"
-                                    placeholder="Enter additional notes..."
+                                    className="input pl-10 h-24" // Or min-h-[100px]
+                                    placeholder="Enter additional notes or special instructions..."
                                 />
                             </div>
                         </div>
 
-                        {/* --- Item Selection Area --- */}
+                        {/* Item Selection Area */}
                         <div>
                             <label htmlFor="itemToAdd" className="block text-sm font-medium text-neutral-700 mb-1">
                                 Select Item to Add
@@ -519,12 +506,12 @@ const VisitFormPage: React.FC = () => {
                                     <Select
                                         inputId="itemToAdd"
                                         options={itemOptions}
-                                        value={currentItemToAdd} // Controlled by currentItemToAdd state
-                                        onChange={(selectedOption) => setCurrentItemToAdd(selectedOption as SingleValue<SelectOption>)} // Update current item state
+                                        value={currentItemToAdd}
+                                        onChange={(selectedOption) => setCurrentItemToAdd(selectedOption as SingleValue<SelectOption>)}
                                         placeholder="Search and select item..."
                                         styles={customStyles}
                                         isSearchable
-                                        isClearable // Allow clearing the selection
+                                        isClearable
                                         filterOption={customFilter}
                                         formatOptionLabel={formatOptionLabel}
                                         className="react-select-container"
@@ -534,8 +521,8 @@ const VisitFormPage: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleAddItem}
-                                    disabled={!currentItemToAdd || isSubmitting} // Disable if no item selected or submitting
-                                    className="btn btn-secondary p-2 h-[42px]" // Adjusted button style/size
+                                    disabled={!currentItemToAdd || isSubmitting}
+                                    className="btn btn-secondary p-2 h-[42px]"
                                     title="Add selected item to list"
                                 >
                                     <Plus size={20} />
@@ -543,13 +530,12 @@ const VisitFormPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* --- Display Added Items --- */}
                         {addedItems.length > 0 && (
                             <div className="mt-3 space-y-2">
                                 <h3 className="text-sm font-medium text-neutral-700">Added Items:</h3>
                                 <ul className="border border-neutral-200 rounded-md p-2 bg-neutral-50 max-h-32 overflow-y-auto">
                                     {addedItems.map((item, index) => (
-                                        <li key={`${item.value}-${index}`} // Use index for key to allow duplicates
+                                        <li key={`${item.value}-${index}`}
                                             className="flex justify-between items-center py-1 px-2 text-sm text-neutral-800 hover:bg-neutral-100 rounded"
                                         >
                                             <span>{item.label}</span>
@@ -567,10 +553,8 @@ const VisitFormPage: React.FC = () => {
                                 </ul>
                             </div>
                         )}
-                        {/* --- End Item Selection Area --- */}
 
-
-                        {/* Route Selector (Single Select) */}
+                        {/* Route Selector */}
                         <div>
                             <label htmlFor="routeId" className="block text-sm font-medium text-neutral-700 mb-1">
                                 Route
@@ -580,14 +564,16 @@ const VisitFormPage: React.FC = () => {
                                     <Route size={18} className="text-neutral-500" />
                                 </div>
                                 <Select
-  options={routeOptions}
-  value={routeId}
-  onChange={(selected) => setRouteId(selected)}
-  styles={customStyles}
-  placeholder="Select route..."
-  filterOption={customFilter}
-  formatOptionLabel={formatOptionLabel}
-/>
+                                    options={routeOptions}
+                                    value={routeId}
+                                    onChange={(selected) => setRouteId(selected as SingleValue<SelectOption>)}
+                                    styles={customStyles}
+                                    placeholder="Select route..."
+                                    filterOption={customFilter}
+                                    formatOptionLabel={formatOptionLabel}
+                                    className="react-select-container"
+                                    classNamePrefix="react-select"
+                                />
                             </div>
                         </div>
 
@@ -613,34 +599,14 @@ const VisitFormPage: React.FC = () => {
                                 </div>
                             </div>
                         </div>
-
-                        {/* Notes */}
-                        <div>
-                            <label htmlFor="notes" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Notes (Optional)
-                            </label>
-                            <div className="relative">
-                                <div className="absolute top-3 left-3 pointer-events-none z-20">
-                                    <FileText size={18} className="text-neutral-500" />
-                                </div>
-                                <textarea
-                                    id="notes"
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
-                                    className="input pl-10 min-h-[100px]"
-                                    placeholder="Add any special instructions or notes"
-                                />
-                            </div>
-                        </div>
-
+                        {/* Second notes field removed from here to avoid duplication */}
                     </div>
                 </div>
 
                 {/* Location Card */}
-                <div className="card p-6 bg-white shadow rounded-lg"> {/* Added card styles */}
-                    <h2 className="text-lg font-medium mb-4 text-gray-700">Location</h2> {/* Adjusted text color */}
+                <div className="card p-6 bg-white shadow rounded-lg">
+                    <h2 className="text-lg font-medium mb-4 text-gray-700">Location</h2>
                     <div className="space-y-4">
-                        {/* Address Input */}
                         <div>
                             <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-1">
                                 Address
@@ -656,12 +622,11 @@ const VisitFormPage: React.FC = () => {
                                     onChange={(e) => setAddress(e.target.value)}
                                     className="input pl-10"
                                     placeholder="Enter street address, city"
-                                    required // Address is required
+                                    required
                                 />
                             </div>
                         </div>
 
-                        {/* Get Location Button and Display */}
                         <div>
                             <button
                                 type="button"
@@ -676,7 +641,7 @@ const VisitFormPage: React.FC = () => {
                                     </>
                                 ) : location ? (
                                     <>
-                                        <Check size={18} className="mr-2 text-green-600" /> {/* Green check */}
+                                        <Check size={18} className="mr-2 text-green-600" />
                                         Geo-Coordinates Captured (Update?)
                                     </>
                                 ) : (
@@ -687,22 +652,18 @@ const VisitFormPage: React.FC = () => {
                                 )}
                             </button>
 
-                            {/* Display Location Error */}
                             {locationError && (
                                 <p className="text-red-600 text-sm mt-2">{locationError}</p> 
                             )}
 
-                            {/* Display Captured Location Info */}
                             {location && (
-                                <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200"> {/* Adjusted success style */}
+                                <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
                                     <p className="text-sm font-medium text-green-700 flex items-center">
                                         <Check size={16} className="mr-1.5" /> Geo-coordinates captured:
                                     </p>
                                     <p className="text-xs text-neutral-600 mt-1 pl-5">
                                         Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
                                     </p>
-                                    {/* Address is displayed via its input field, no need to repeat here unless desired */}
-                                    {/* <p className="text-xs text-neutral-500 mt-1 pl-5">Address Entered: {address}</p> */}
                                 </div>
                             )}
                              {!location && address && (
@@ -712,7 +673,6 @@ const VisitFormPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex justify-between items-center pt-2">
                     <button
                         type="button"
@@ -724,13 +684,14 @@ const VisitFormPage: React.FC = () => {
                     </button>
                     <button
                         type="submit"
-                        // Update disable condition
                         disabled={
                             isSubmitting ||
-                            !location || // No lat/lng
-                            !address ||   // No address string
-                            addedItems.length === 0 || // No items added
-                            !routeId      // No route selected
+                            !location ||
+                            !address ||
+                            addedItems.length === 0 ||
+                            !routeId ||
+                            !buyerName || // Added common required fields for better UX on button disable
+                            !number_one   // Example: if number_one is truly required
                         }
                         className="btn btn-primary"
                     >

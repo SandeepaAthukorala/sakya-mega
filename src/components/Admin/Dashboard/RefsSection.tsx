@@ -126,7 +126,12 @@ const RefsSection: React.FC<RefsSectionProps> = ({
             editable: true,
             filterable: true
         },
-
+        {
+            key: 'phone',
+            header: 'Phone',
+            editable: true,
+            filterable: true
+        },
         {
             key: 'access',
             header: 'Access',

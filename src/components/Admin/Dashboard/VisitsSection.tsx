@@ -134,13 +134,13 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             type: 'select',
             options: ['', ...routesData.map(route => ({ 
                 value: route.id, 
-                label: `${route.name || 'Unknown'} " " ${route.number || ''}`.trim() 
+                label: `${route.name || 'Unknown'} ${route.number || ''}`.trim() 
             }))],
             render: (visit: Visit) => (
                 <div>
                     {visit.route_id ? (
                         <>
-                            {routesData.find(route => route.id === visit.route_id)?.name || 'Unknown'}{' '}
+                            {routesData.find(route => route.id === visit.route_id)?.name || 'Unknown'} 
                             {routesData.find(route => route.id === visit.route_id)?.number || ''}
                         </>
                     ) : (
@@ -163,7 +163,7 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                 <div>
                     {visit.ref_id ? (
                         <>
-                            {allRefs.find(ref => ref.id === visit.ref_id)?.first_name || 'Unknown'}{' '}
+                            {allRefs.find(ref => ref.id === visit.ref_id)?.first_name || 'Unknown'} 
                             {allRefs.find(ref => ref.id === visit.ref_id)?.last_name || ''}
                         </>
                     ) : (
@@ -205,17 +205,28 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             filterable: true
         },
         {
-            key: 'numbers',
-            header: 'Numbers',
+            key: 'number_one',
+            header: 'Number 1',
             editable: true,
-            filterable: true,
-            render: (visit: Visit) => (
-                <div>
-                    {[visit.number_one, visit.number_two, visit.number_three, visit.number_four]
-                        .filter(num => num && num.trim() !== '')
-                        .join(', ')}
-                </div>
-            )
+            filterable: true
+        },
+        {
+            key: 'number_two',
+            header: 'Number 2',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'number_three',
+            header: 'Number 3',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'number_four',
+            header: 'Number 4',
+            editable: true,
+            filterable: true
         },
         {
             key: 'bill_number',
