@@ -270,6 +270,21 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
 
     // Handle adding a new visit
     const handleAddVisit = async () => {
+        // Check if we have any routes available
+        if (routesData.length === 0) {
+            console.error('Cannot add visit: No routes available');
+            return;
+        }
+        
+        // Get the first route as default
+        const defaultRouteId = routesData[0].id;
+        
+        // Find the highest order in the default route
+        const visitsInDefaultRoute = visits.filter(v => v.route_id === defaultRouteId);
+        const highestOrder = visitsInDefaultRoute.length > 0 
+            ? Math.max(...visitsInDefaultRoute.map(v => v.order || 0)) 
+            : 0;
+        
         // Create a basic new visit with default values
         const newVisit: NewVisitDataType = {
             buyer_name: 'New Visit',
@@ -280,8 +295,8 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             address: '',
             location: { lat: 0, lng: 0 },
             mobile_phone: '',
-            route_id: null,
-            order: null
+            route_id: defaultRouteId, // Use the first route as default
+            order: highestOrder + 1 // Set order to be highest + 1
         };
 
         try {
