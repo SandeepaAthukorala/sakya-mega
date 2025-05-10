@@ -62,12 +62,15 @@ const RoutesSection: React.FC<RoutesSectionProps> = ({
             editable: true,
             filterable: true,
             type: 'select',
-            options: ['', ...allRefs.map(ref => ref.id)],
+            options: ['', ...allRefs.map(ref => ({ 
+                value: ref.id, 
+                label: `${ref.first_name || 'Unknown'} ${ref.last_name || ''}`.trim() 
+            }))],
             render: (route: Route) => (
                 <div>
                     {route.ref_id ? (
                         <>
-                            {allRefs.find(ref => ref.id === route.ref_id)?.first_name || 'Unknown'} 
+                            {allRefs.find(ref => ref.id === route.ref_id)?.first_name || 'Unknown'}{' '}
                             {allRefs.find(ref => ref.id === route.ref_id)?.last_name || ''}
                         </>
                     ) : (

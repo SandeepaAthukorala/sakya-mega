@@ -211,6 +211,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                                 <option value="Pending">Pending</option>
                                 <option value="Completed">Completed</option>
                                 <option value="Cancelled">Cancelled</option>
+<option value="Return">Return</option>
                             </select>
                         </div>
                          {/* Visit Type */}
@@ -403,7 +404,7 @@ const VisitListPage: React.FC = () => {
     const clearSearch = () => setSearchTerm('');
     const formatDate = (dateString: string) => { /* ... */ try { return format(parseISO(dateString), 'MMM d, yyyy'); } catch { return dateString; } };
     const getItemDisplay = (itemId: string): string => { /* ... */ const item = allItems.find(i => i.id === itemId); return item ? `${item.item_name} (${item.item_number})` : `Unknown Item`; };
-    const getStatusClasses = (status: string) => { /* ... */ switch (status?.toLowerCase()) { case 'completed': return 'bg-green-100 text-green-700 border-green-300'; case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-300'; case 'cancelled': return 'bg-red-100 text-red-700 border-red-300'; default: return 'bg-gray-100 text-gray-700 border-gray-300'; } };
+    const getStatusClasses = (status: string) => { /* ... */ switch (status?.toLowerCase()) { case 'completed': return 'bg-green-100 text-green-700 border-green-300'; case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-300'; case 'cancelled': return 'bg-red-100 text-red-700 border-red-300'; case 'return': return 'bg-blue-100 text-blue-700 border-blue-300'; default: return 'bg-gray-100 text-gray-700 border-gray-300'; } };
 
 
     // --- CRUD Handlers ---
@@ -482,7 +483,8 @@ const VisitListPage: React.FC = () => {
             {/* Filters */}
              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
                  <div className="flex justify-between items-center mb-3"> <button onClick={() => setShowFilters(!showFilters)} className="btn btn-secondary btn-sm"> <Filter size={16} className="mr-1.5" /> Filters </button> {(statusFilter !== 'all' || typeFilter !== 'all' || startDateFilter || endDateFilter) && (<button onClick={clearFilters} className="text-sm text-blue-600 hover:underline font-medium">Clear All Filters</button>)} </div>
-                 {showFilters && (<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-3 border-t border-gray-200 animate-fade-in"> {/* Filter Inputs */} <div> <label htmlFor="statusFilter" className="lbl-xs">Status</label> <select id="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input input-sm w-full"> <option value="all">All</option> <option value="Pending">Pending</option> <option value="Completed">Completed</option> <option value="Cancelled">Cancelled</option> </select> </div> <div> <label htmlFor="typeFilter" className="lbl-xs">Type</label> <select id="typeFilter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input input-sm w-full"> <option value="all">All</option> {deliveryTypes.map(type => <option key={type} value={type}>{type}</option>)} </select> </div> <div> <label htmlFor="startDateFilter" className="lbl-xs">Start Date</label> <input type="date" id="startDateFilter" value={startDateFilter} onChange={(e) => setStartDateFilter(e.target.value)} className="input input-sm w-full" /> </div> <div> <label htmlFor="endDateFilter" className="lbl-xs">End Date</label> <input type="date" id="endDateFilter" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="input input-sm w-full" /> </div> </div>)}
+                 {showFilters && (<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-3 border-t border-gray-200 animate-fade-in"> {/* Filter Inputs */} <div> <label htmlFor="statusFilter" className="lbl-xs">Status</label> <select id="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input input-sm w-full"> <option value="all">All</option> <option value="Pending">Pending</option> <option value="Completed">Completed</option> <option value="Cancelled">Cancelled</option>
+<option value="Return">Return</option> </select> </div> <div> <label htmlFor="typeFilter" className="lbl-xs">Type</label> <select id="typeFilter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input input-sm w-full"> <option value="all">All</option> {deliveryTypes.map(type => <option key={type} value={type}>{type}</option>)} </select> </div> <div> <label htmlFor="startDateFilter" className="lbl-xs">Start Date</label> <input type="date" id="startDateFilter" value={startDateFilter} onChange={(e) => setStartDateFilter(e.target.value)} className="input input-sm w-full" /> </div> <div> <label htmlFor="endDateFilter" className="lbl-xs">End Date</label> <input type="date" id="endDateFilter" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="input input-sm w-full" /> </div> </div>)}
              </div>
 
             {/* Visit List Area */}

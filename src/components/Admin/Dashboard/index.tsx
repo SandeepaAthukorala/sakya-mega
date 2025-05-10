@@ -51,7 +51,7 @@ const AdminDashboard: React.FC = () => {
 
     // --- Constants ---
     const deliveryTypes: Visit['type'][] = ['Sample', 'Sittu', 'Over'];
-    const visitStatuses: Visit['status'][] = ['Pending', 'Completed', 'Cancelled'];
+    const visitStatuses: Visit['status'][] = ['Pending', 'Completed', 'Cancelled', 'Return'];
     const todayDate = new Date();
     const todayString = todayDate.toISOString().split('T')[0];
     const thisWeekStart = startOfWeek(todayDate).toISOString().split('T')[0];
