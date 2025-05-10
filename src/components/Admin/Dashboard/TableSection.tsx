@@ -54,7 +54,7 @@ interface TableSectionProps {
     render?: (item: any) => React.ReactNode;
     editable?: boolean;
     type?: 'text' | 'number' | 'select';
-    options?: string[];
+    options?: (string | { value: string, label: string })[];
     filterable?: boolean; // Whether this column should have a filter option
   }[];
   tableName: string; // Supabase table name
@@ -356,9 +356,15 @@ const TableSection: React.FC<TableSectionProps> = ({
             onKeyDown={handleEditKeyDown}
             onBlur={handleSaveEdit}
           >
-            {column.options?.map(option => (
-              <option key={option} value={option}>{option}</option>
-            ))}
+            {column.options?.map(option => {
+              // Handle both string options and {value, label} format
+              if (typeof option === 'string') {
+                return <option key={option} value={option}>{option}</option>;
+              } else if (typeof option === 'object' && option !== null) {
+                return <option key={option.value} value={option.value}>{option.label}</option>;
+              }
+              return null;
+            })}
           </select>
         );
       case 'number':

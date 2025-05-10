@@ -132,7 +132,10 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             editable: true,
             filterable: true,
             type: 'select',
-            options: ['', ...routesData.map(route => route.id)],
+            options: ['', ...routesData.map(route => ({ 
+                value: route.id, 
+                label: `${route.name || 'Unknown'} ${route.number || ''}`.trim() 
+            }))],
             render: (visit: Visit) => (
                 <div>
                     {visit.route_id ? (
@@ -152,7 +155,10 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             editable: true,
             filterable: true,
             type: 'select',
-            options: ['', ...allRefs.map(ref => ref.id)],
+            options: ['', ...allRefs.map(ref => ({
+                value: ref.id,
+                label: `${ref.first_name || 'Unknown'} ${ref.last_name || ''}`.trim()
+            }))],
             render: (visit: Visit) => (
                 <div>
                     {visit.ref_id ? (
@@ -195,6 +201,42 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
         {
             key: 'buyer_name',
             header: 'Buyer',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'number_one',
+            header: 'Number 1',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'number_two',
+            header: 'Number 2',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'number_three',
+            header: 'Number 3',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'number_four',
+            header: 'Number 4',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'bill_number',
+            header: 'Bill Number',
+            editable: true,
+            filterable: true
+        },
+        {
+            key: 'notes',
+            header: 'Notes',
             editable: true,
             filterable: true
         },
@@ -294,7 +336,10 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             ref_id: allRefs.length > 0 ? allRefs[0].id : null,
             address: '',
             location: { lat: 0, lng: 0 },
-            mobile_phone: '',
+            number_one: '',
+            number_two: '',
+            number_three: '',
+            number_four: '',
             route_id: defaultRouteId, // Use the first route as default
             order: highestOrder + 1 // Set order to be highest + 1
         };

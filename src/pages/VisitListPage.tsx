@@ -47,8 +47,10 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
 }) => {
     // --- Form State ---
     const [buyerName, setBuyerName] = useState('');
-    const [mobilePhone, setMobilePhone] = useState('');
-    const [landPhone, setLandPhone] = useState('');
+    const [numberOne, setNumberOne] = useState('');
+    const [numberTwo, setNumberTwo] = useState('');
+    const [numberThree, setNumberThree] = useState('');
+    const [numberFour, setNumberFour] = useState('');
     const [address, setAddress] = useState('');
     const [visitDate, setVisitDate] = useState('');
     const [visitType, setVisitType] = useState<Visit['type']>('Sample');
@@ -77,8 +79,10 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
     useEffect(() => {
         if (visit) {
             setBuyerName(visit.buyer_name || '');
-            setMobilePhone(visit.mobile_phone || '');
-            setLandPhone(visit.land_phone || '');
+            setNumberOne(visit.number_one || '');
+            setNumberTwo(visit.number_two || '');
+            setNumberThree(visit.number_three || '');
+            setNumberFour(visit.number_four || '');
             setAddress(visit.address || '');
             setVisitDate(visit.date ? format(parseISO(visit.date), 'yyyy-MM-dd') : '');
             setVisitType(visit.type);
@@ -159,8 +163,10 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
         const updatedVisitData: Partial<Visit> & { location?: LocationData | null } = {
             id: visit.id,
             buyer_name: buyerName,
-            mobile_phone: mobilePhone || null,
-            land_phone: landPhone || null,
+            number_one: numberOne || null,
+            number_two: numberTwo || null,
+            number_three: numberThree || null,
+            number_four: numberFour || null,
             address: address,
             date: new Date(visitDate).toISOString(),
             type: visitType,
@@ -243,10 +249,16 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                      {/* Address */}
                      <div> <label htmlFor="edit_address" className="lbl">Address</label> <div className="relative"> <div className="input-icon left-0 pl-3"><MapPin size={18} /></div> <input type="text" id="edit_address" value={address} onChange={(e) => setAddress(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} /> </div> </div>
 
-                     {/* Phones */}
+                     {/* Phone Numbers */}
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div> <label htmlFor="edit_mobile_phone" className="lbl">Mobile Phone</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_mobile_phone" value={mobilePhone} onChange={(e) => setMobilePhone(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} pattern="[0-9]{10,15}" /> </div> </div>
-                        <div> <label htmlFor="edit_land_phone" className="lbl">Land Phone (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_land_phone" value={landPhone} onChange={(e) => setLandPhone(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
+                        <div> <label htmlFor="edit_number_one" className="lbl">Number 1</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_one" value={numberOne} onChange={(e) => setNumberOne(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} pattern="[0-9]{10,15}" /> </div> </div>
+                        <div> <label htmlFor="edit_number_two" className="lbl">Number 2 (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_two" value={numberTwo} onChange={(e) => setNumberTwo(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
+                    </div>
+                    
+                    {/* Additional Phone Numbers */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div> <label htmlFor="edit_number_three" className="lbl">Number 3 (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_three" value={numberThree} onChange={(e) => setNumberThree(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
+                        <div> <label htmlFor="edit_number_four" className="lbl">Number 4 (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_four" value={numberFour} onChange={(e) => setNumberFour(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
                     </div>
 
                      {/* Item Selection */}
@@ -494,7 +506,12 @@ const VisitListPage: React.FC = () => {
                                          <div className="visit-card-details">
                                              {/* Display fields: Buyer, Phones, Address, Items, Date, Notes */}
                                             <div className="detail-row"> <User size={16} className="detail-icon" /> <h3 className="detail-buyer">{visit.buyer_name || 'N/A'}</h3> </div>
-                                            <div className="detail-row-group"> <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">M:</span><span>{visit.mobile_phone || <i className="text-gray-400">n/a</i>}</span></div> <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">L:</span><span>{visit.land_phone || <i className="text-gray-400">n/a</i>}</span></div> </div>
+                                            <div className="detail-row-group"> 
+                                                <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">1:</span><span>{visit.number_one || <i className="text-gray-400">n/a</i>}</span></div> 
+                                                <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">2:</span><span>{visit.number_two || <i className="text-gray-400">n/a</i>}</span></div>
+                                                {visit.number_three && <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">3:</span><span>{visit.number_three}</span></div>}
+                                                {visit.number_four && <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">4:</span><span>{visit.number_four}</span></div>}
+                                            </div>
                                             <div className="detail-row"> <MapPin size={14} className="detail-icon" /> <span>{visit.address || <i className="text-gray-400">No address</i>}</span> </div>
                                             <div className="detail-row"> <Package size={14} className="detail-icon" /> <div className="flex flex-wrap gap-1"> {(visit.item_id?.length || 0) > 0 ? visit.item_id?.map((id, index) => <span key={`${id}-${index}`} className="badge badge-indigo">{getItemDisplay(id)}</span>) : <i className="text-gray-400 text-xs">No items</i>} </div> </div>
                                             <div className="detail-row text-sm text-gray-500"> <CalendarRange size={14} className="detail-icon" /> {formatDate(visit.date)} </div>

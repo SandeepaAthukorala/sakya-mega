@@ -11,18 +11,26 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { useAuth } from './contexts/AuthContext';
 
-function App() {
-  const ConditionalRedirect = () => {
-    const { user } = useAuth();
+// Component to handle conditional redirects based on user role
+const ConditionalRedirect = () => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) return null;
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  if (user?.role === 'Admin') {
+    return <Navigate to="/admin" replace />;
+  } else if (user?.role === 'Ref') {
+    return <Navigate to="/visits" replace />;
+  } else {
+    return <Navigate to="/login" replace />;
+  }
+};
 
-    if (user?.role === 'Admin') {
-      return <Navigate to="/admin" replace />;
-    } else if (user?.role === 'Ref') {
-      return <Navigate to="/visits" replace />;
-    } else {
-      return <Navigate to="/login" replace />;
-    }
-  };
+function App() {
 
   return (
     <AuthProvider>

@@ -382,10 +382,10 @@ const VisitFormPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Mobile Phone */}
+                        {/* Number One */}
                         <div>
-                            <label htmlFor="mobile_phone" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Mobile Phone
+                            <label htmlFor="number_one" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Number 1
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -393,9 +393,9 @@ const VisitFormPage: React.FC = () => {
                                 </div>
                                 <input
                                     type="tel"
-                                    id="mobile_phone"
-                                    value={mobile_phone}
-                                    onChange={(e) => setMobilePhone(e.target.value)}
+                                    id="number_one"
+                                    value={number_one}
+                                    onChange={(e) => setNumberOne(e.target.value)}
                                     className="input pl-10"
                                     required
                                     placeholder="Enter mobile number (e.g., 07xxxxxxxx)"
@@ -404,10 +404,10 @@ const VisitFormPage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Land Phone */}
+                        {/* Number Two */}
                         <div>
-                            <label htmlFor="land_phone" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Land Phone (Optional)
+                            <label htmlFor="number_two" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Number 2 (Optional)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -415,12 +415,93 @@ const VisitFormPage: React.FC = () => {
                                 </div>
                                 <input
                                     type="tel"
-                                    id="land_phone"
-                                    value={land_phone}
-                                    onChange={(e) => setLandPhone(e.target.value)}
+                                    id="number_two"
+                                    value={number_two}
+                                    onChange={(e) => setNumberTwo(e.target.value)}
                                     className="input pl-10"
-                                    placeholder="Enter landline number"
+                                    placeholder="Enter second contact number"
                                     pattern="[0-9]{9,15}"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Number Three */}
+                        <div>
+                            <label htmlFor="number_three" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Number 3 (Optional)
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <Phone size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="tel"
+                                    id="number_three"
+                                    value={number_three}
+                                    onChange={(e) => setNumberThree(e.target.value)}
+                                    className="input pl-10"
+                                    placeholder="Enter third contact number"
+                                    pattern="[0-9]{9,15}"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Number Four */}
+                        <div>
+                            <label htmlFor="number_four" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Number 4 (Optional)
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <Phone size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="tel"
+                                    id="number_four"
+                                    value={number_four}
+                                    onChange={(e) => setNumberFour(e.target.value)}
+                                    className="input pl-10"
+                                    placeholder="Enter fourth contact number"
+                                    pattern="[0-9]{9,15}"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Bill Number */}
+                        <div>
+                            <label htmlFor="bill_number" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Bill Number (Optional)
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
+                                    <FileText size={18} className="text-neutral-500" />
+                                </div>
+                                <input
+                                    type="text"
+                                    id="bill_number"
+                                    value={billNumber}
+                                    onChange={(e) => setBillNumber(e.target.value)}
+                                    className="input pl-10"
+                                    placeholder="Enter bill number"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Notes */}
+                        <div>
+                            <label htmlFor="notes" className="block text-sm font-medium text-neutral-700 mb-1">
+                                Notes
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 pt-2 flex items-start pointer-events-none z-20">
+                                    <ClipboardList size={18} className="text-neutral-500" />
+                                </div>
+                                <textarea
+                                    id="notes"
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    className="input pl-10 h-24"
+                                    placeholder="Enter additional notes..."
                                 />
                             </div>
                         </div>
