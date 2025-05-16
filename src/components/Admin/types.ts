@@ -15,6 +15,7 @@ export interface Item {
     id: string; // uuid
     item_name: string; // text
     item_number: number; // integer
+    value?: number | null; // double precision
     created_at?: string;
 }
 

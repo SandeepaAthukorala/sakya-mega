@@ -56,6 +56,7 @@ interface TableSectionProps {
     type?: 'text' | 'number' | 'select';
     options?: (string | { value: string, label: string })[];
     filterable?: boolean; // Whether this column should have a filter option
+    customEditHandler?: (item: any, value: any, supabase: any) => Promise<any>; // Custom handler for editing
   }[];
   tableName: string; // Supabase table name
   itemType: 'visit' | 'ref' | 'route' | 'item';
@@ -208,7 +209,21 @@ const TableSection: React.FC<TableSectionProps> = ({
     if (!item) return;
     
     setEditingCell({ type: itemType, rowId, field: field as any });
-    setEditValue(item[field]);
+    
+    // Special handling for phone numbers field
+    if (field === 'combined_numbers' && itemType === 'visit') {
+      // Format phone numbers as multi-line text
+      const numbers = [
+        item.number_one,
+        item.number_two,
+        item.number_three,
+        item.number_four
+      ].filter(num => num && num.trim() !== '').join('\n');
+      
+      setEditValue(numbers);
+    } else {
+      setEditValue(item[field]);
+    }
     
     // Focus the input after it's rendered
     setTimeout(() => {
@@ -225,59 +240,79 @@ const TableSection: React.FC<TableSectionProps> = ({
     setIsLoadingInline(true);
     
     try {
+      // Get the item being edited
+      const itemToUpdate = data.find(item => item.id === editingCell.rowId);
+      if (!itemToUpdate) throw new Error('Item not found');
+      
+      // Get the column definition
+      const columnDef = columns.find(col => col.key === editingCell.field);
+      if (!columnDef) throw new Error('Column not found');
+      
+      // Check if this column has a custom edit handler
+      if (columnDef.customEditHandler) {
+        // Use the custom handler
+        const updatedItem = await columnDef.customEditHandler(itemToUpdate, editValue, supabase);
+        
+        // Update local state with the result from the custom handler
+        setData(prevData => 
+          prevData.map(item => 
+            item.id === editingCell.rowId ? updatedItem : item
+          )
+        );
+        return; // Exit early as we've handled the update
+      }
+      
       // Special handling for route_id changes in visits table
       if (tableName === 'visits' && editingCell.field === 'route_id') {
-        const visitToUpdate = data.find(item => item.id === editingCell.rowId);
-        if (visitToUpdate) {
-          // If changing route_id
-          if (visitToUpdate.route_id !== editValue) {
-            // If assigning to a route (not removing from a route)
-            if (editValue) {
-              // Find the highest order in the target route
-              const visitsInTargetRoute = data.filter(v => v.route_id === editValue);
-              const highestOrder = visitsInTargetRoute.length > 0 
-                ? Math.max(...visitsInTargetRoute.map(v => v.order || 0)) 
-                : 0;
-              
-              // Set the order to be highest + 1
-              const newOrder = highestOrder + 1;
-              
-              // Update both route_id and order in Supabase
-              const { error } = await supabase
-                .from('visits')
-                .update({ route_id: editValue, order: newOrder })
-                .eq('id', editingCell.rowId);
-              
-              if (error) throw error;
-              
-              // Update local state
-              setData(prevData => 
-                prevData.map(item => 
-                  item.id === editingCell.rowId 
-                    ? { ...item, route_id: editValue, order: newOrder } 
-                    : item
-                )
-              );
-            } else {
-              // If removing from a route, set order to null
-              const { error } = await supabase
-                .from('visits')
-                .update({ route_id: null, order: null })
-                .eq('id', editingCell.rowId);
-              
-              if (error) throw error;
-              
-              // Update local state
-              setData(prevData => 
-                prevData.map(item => 
-                  item.id === editingCell.rowId 
-                    ? { ...item, route_id: null, order: null } 
-                    : item
-                )
-              );
-            }
-            return; // Exit early as we've handled the update
+        const visitToUpdate = itemToUpdate;
+        // If changing route_id
+        if (visitToUpdate.route_id !== editValue) {
+          // If assigning to a route (not removing from a route)
+          if (editValue) {
+            // Find the highest order in the target route
+            const visitsInTargetRoute = data.filter(v => v.route_id === editValue);
+            const highestOrder = visitsInTargetRoute.length > 0 
+              ? Math.max(...visitsInTargetRoute.map(v => v.order || 0)) 
+              : 0;
+            
+            // Set the order to be highest + 1
+            const newOrder = highestOrder + 1;
+            
+            // Update both route_id and order in Supabase
+            const { error } = await supabase
+              .from('visits')
+              .update({ route_id: editValue, order: newOrder })
+              .eq('id', editingCell.rowId);
+            
+            if (error) throw error;
+            
+            // Update local state
+            setData(prevData => 
+              prevData.map(item => 
+                item.id === editingCell.rowId 
+                  ? { ...item, route_id: editValue, order: newOrder } 
+                  : item
+              )
+            );
+          } else {
+            // If removing from a route, set order to null
+            const { error } = await supabase
+              .from('visits')
+              .update({ route_id: null, order: null })
+              .eq('id', editingCell.rowId);
+            
+            if (error) throw error;
+            
+            // Update local state
+            setData(prevData => 
+              prevData.map(item => 
+                item.id === editingCell.rowId 
+                  ? { ...item, route_id: null, order: null } 
+                  : item
+              )
+            );
           }
+          return; // Exit early as we've handled the update
         }
       }
       
@@ -344,6 +379,29 @@ const TableSection: React.FC<TableSectionProps> = ({
   // Render edit input based on column type
   const renderEditInput = (column: typeof columns[0]) => {
     const type = column.type || 'text';
+    
+    // Special handling for phone numbers field
+    if (column.key === 'combined_numbers') {
+      return (
+        <textarea
+          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+          className="textarea textarea-bordered w-full"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onKeyDown={(e) => {
+            // Allow Enter key for new lines in textarea
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.stopPropagation(); // Prevent form submission
+            } else if (e.key === 'Escape') {
+              handleCancelEdit();
+            }
+          }}
+          onBlur={handleSaveEdit}
+          placeholder="Enter phone numbers (one per line)"
+          rows={4}
+        />
+      );
+    }
     
     switch (type) {
       case 'select':
@@ -471,7 +529,7 @@ const TableSection: React.FC<TableSectionProps> = ({
                         {filters.filter(filter => filter.key.startsWith('route-') || filter.key === 'no-route').map(filter => (
                           <button 
                             key={filter.key}
-                            className={`btn ${activeFilter === filter.key ? 'btn-error' : 'btn-outline'} btn-xs`}
+                            className={`btn ${activeFilter === filter.key ? 'btn-error' : 'btn-outline'} px-2 py-1 text-xs gap-1`}
                             onClick={() => setActiveFilter(filter.key)}
                           >
                             {filter.label}
@@ -632,11 +690,11 @@ const TableSection: React.FC<TableSectionProps> = ({
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   {columns.map(column => (
-                    <th key={column.key} className="px-4 py-2 text-left text-gray-600 font-medium">
+                    <th key={column.key} className="px-4 py-2 text-left text-gray-600 font-medium text-sm">
                       {column.header}
                     </th>
                   ))}
-                  <th className="px-4 py-2 text-left text-gray-600 font-medium">Actions</th>
+                  <th className="px-4 py-2 text-left text-gray-600 font-medium text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>

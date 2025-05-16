@@ -113,9 +113,9 @@ const RegisterPage: React.FC = () => {
               onChange={(e) => setRole(e.target.value as UserRole)}
               className="input"
               required
+              disabled
             >
               <option value="Ref">Delivery Reference</option>
-              <option value="Admin">Administrator</option>
             </select>
           </div>
           

@@ -73,21 +73,9 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
         fetchRoutes();
     }, []);
     
-    // Format ID for display
-    const formatVisitId = (visit: Visit) => {
-        // If order or route_id is missing, use a portion of the UUID
-        if (!visit.route_id || typeof visit.order === 'undefined' || visit.order === null) {
-            return visit.id.substring(0, 8);
-        }
-        
-        const route = routesData.find(r => r.id === visit.route_id);
-        const routeName = route?.name || 'Unknown';
-        const routeNumber = route?.number || 0;
-        
-        return `${visit.order} ${routeName} ${routeNumber}`;
-    };
+    // No longer need formatVisitId as we're using bill_number instead
     
-    // Sort visits by order if available, otherwise by formatted ID
+    // Sort visits by order if available, otherwise by route name
     const sortedVisits = useMemo(() => {
         return [...visits].sort((a, b) => {
             // First sort by route_id
@@ -102,22 +90,19 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                 return a.order - b.order;
             }
             
-            // Fall back to ID comparison if order is not available
-            const aId = formatVisitId(a);
-            const bId = formatVisitId(b);
-            return aId.localeCompare(bId);
+            // Fall back to bill number comparison if order is not available
+            return (a.bill_number || '').localeCompare(b.bill_number || '');
         });
-    }, [visits, routesData]);
+    }, [visits]);
     
     // Component state
     // Define columns for the table
     const columns = [
         {
-            key: 'id',
-            header: 'ID',
-            editable: false,
-            filterable: true,
-            render: (visit: Visit) => formatVisitId(visit)
+            key: 'bill_number',
+            header: 'Bill Number',
+            editable: true,
+            filterable: true
         },
         {
             key: 'date',
@@ -205,34 +190,280 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             filterable: true
         },
         {
-            key: 'number_one',
-            header: 'Number 1',
+            key: 'combined_numbers',
+            header: 'Phone Numbers',
             editable: true,
-            filterable: true
+            filterable: true,
+            render: (visit: Visit) => {
+                // Get all non-empty number fields
+                const numbers = [
+                    visit.number_one,
+                    visit.number_two,
+                    visit.number_three,
+                    visit.number_four
+                ].filter(num => num && num.trim() !== '');
+                
+                if (numbers.length === 0) {
+                    return <span className="text-neutral-400">No numbers</span>;
+                }
+                
+                // Display each number on a new line
+                return (
+                    <div className="flex flex-col gap-1">
+                        {numbers.map((number, index) => (
+                            <div key={index} className="text-sm">{number}</div>
+                        ))}
+                    </div>
+                );
+            },
+            // Custom handler for editing the combined numbers
+            customEditHandler: async (visit: Visit, value: string, supabase: any) => {
+                // When editing starts, the current values are already loaded
+                // Split the input by newlines or commas (to support both formats)
+                const numberArray = value.split(/[,\n]/).map(num => num.trim()).filter(num => num !== '');
+                
+                // Assign values to the appropriate fields (up to 4 numbers)
+                const updateData: any = {
+                    number_one: numberArray[0] || '',
+                    number_two: numberArray[1] || '',
+                    number_three: numberArray[2] || '',
+                    number_four: numberArray[3] || ''
+                };
+                
+                // Update the database
+                const { error } = await supabase
+                    .from('visits')
+                    .update(updateData)
+                    .eq('id', visit.id);
+                
+                if (error) throw error;
+                
+                // Return the updated data to update the local state
+                return {
+                    ...visit,
+                    ...updateData
+                };
+            }
         },
+
         {
-            key: 'number_two',
-            header: 'Number 2',
+            key: 'item_id',
+            header: 'Items',
             editable: true,
-            filterable: true
-        },
-        {
-            key: 'number_three',
-            header: 'Number 3',
-            editable: true,
-            filterable: true
-        },
-        {
-            key: 'number_four',
-            header: 'Number 4',
-            editable: true,
-            filterable: true
-        },
-        {
-            key: 'bill_number',
-            header: 'Bill Number',
-            editable: true,
-            filterable: true
+            filterable: true,
+            type: 'custom', // Use custom type for specialized editing
+            render: (visit: Visit) => {
+                // Get all items for this visit
+                const visitItems = (visit.item_id || []) as string[];
+                
+                if (visitItems.length === 0) {
+                    return <span className="text-neutral-400">No items</span>;
+                }
+                
+                // Display each item number and name on a new line with remove button
+                return (
+                    <div className="flex flex-col gap-1">
+                        {visitItems.map((itemId, index) => {
+                            const item = items.find(i => i.id === itemId);
+                            return (
+                                <div key={index} className="flex items-center gap-1">
+                                    <div className="text-sm badge badge-outline">
+                                        {item ? `${item.item_number} - ${item.item_name}` : 'Unknown'}
+                                    </div>
+                                    {/* This button will only be shown in view mode, not edit mode */}
+                                    <button 
+                                        className="btn btn-xs btn-ghost text-error" 
+                                        onClick={async (e) => {
+                                            e.stopPropagation(); // Prevent triggering edit mode
+                                            
+                                            // Remove this item from the visit
+                                            const updatedItemIds = visitItems.filter(id => id !== itemId);
+                                            
+                                            try {
+                                                // Update the database
+                                                const { error } = await supabase
+                                                    .from('visits')
+                                                    .update({ item_id: updatedItemIds })
+                                                    .eq('id', visit.id);
+                                                
+                                                if (error) throw error;
+                                                
+                                                // Update local state
+                                                setVisits(prev => prev.map(v => 
+                                                    v.id === visit.id ? { ...v, item_id: updatedItemIds } : v
+                                                ));
+                                            } catch (error) {
+                                                console.error('Error removing item:', error);
+                                            }
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                );
+            },
+            // Custom handler for editing the items
+            customEditHandler: async (visit: Visit, value: string, supabase: any) => {
+                // Parse the selected item IDs from the multiselect value
+                const selectedItemIds = value.split(',').filter(id => id.trim() !== '');
+                
+                // Update the database
+                const { error } = await supabase
+                    .from('visits')
+                    .update({ item_id: selectedItemIds })
+                    .eq('id', visit.id);
+                
+                if (error) throw error;
+                
+                // Return the updated data to update the local state
+                return {
+                    ...visit,
+                    item_id: selectedItemIds
+                };
+            },
+            // Custom editor component for item selection
+            customEditor: (props: {
+                value: string;
+                onChange: (value: string) => void;
+                onBlur: () => void;
+                visit: Visit;
+            }) => {
+                const visitItemIds = (props.visit.item_id || []) as string[];
+                const [itemNumber, setItemNumber] = useState('');
+                
+                // Handle adding an item by item number
+                const handleAddItemByNumber = () => {
+                    if (!itemNumber.trim()) return;
+                    
+                    // Find the item with the matching item_number
+                    const foundItem = items.find(item => 
+                        item.item_number.toLowerCase() === itemNumber.trim().toLowerCase()
+                    );
+                    
+                    if (foundItem) {
+                        // Only add if not already in the list
+                        if (!visitItemIds.includes(foundItem.id)) {
+                            const newItemIds = [...visitItemIds, foundItem.id];
+                            props.onChange(newItemIds.join(','));
+                        }
+                        // Reset the input field
+                        setItemNumber('');
+                    } else {
+                        // Could show an error message here
+                        alert('Item number not found');
+                    }
+                };
+                
+                // Handle selection of a new item from dropdown (keeping this as a fallback)
+                const handleItemSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+                    const selectedItemId = e.target.value;
+                    if (!selectedItemId) return;
+                    
+                    // Only add if not already in the list
+                    if (!visitItemIds.includes(selectedItemId)) {
+                        const newItemIds = [...visitItemIds, selectedItemId];
+                        props.onChange(newItemIds.join(','));
+                    }
+                    
+                    // Reset the select to the placeholder
+                    e.target.value = '';
+                };
+                
+                // Handle removing an item
+                const handleRemoveItem = (itemIdToRemove: string) => {
+                    const newItemIds = visitItemIds.filter(id => id !== itemIdToRemove);
+                    props.onChange(newItemIds.join(','));
+                };
+                
+                // Handle key press in the item number input
+                const handleKeyPress = (e: React.KeyboardEvent) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddItemByNumber();
+                    }
+                };
+                
+                return (
+                    <div className="flex flex-col gap-2">
+                        {/* Input to enter item number directly */}
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                className="input input-bordered w-full"
+                                placeholder="Enter item number..."
+                                value={itemNumber}
+                                onChange={(e) => setItemNumber(e.target.value)}
+                                onKeyPress={handleKeyPress}
+                            />
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleAddItemByNumber}
+                                type="button"
+                            >
+                                Add
+                            </button>
+                        </div>
+                        
+                        {/* Dropdown to select items (as a fallback) */}
+                        <select 
+                            className="select select-bordered w-full" 
+                            onChange={handleItemSelect}
+                            defaultValue=""
+                        >
+                            <option value="" disabled>Or select an item from list...</option>
+                            {items.map(item => (
+                                <option 
+                                    key={item.id} 
+                                    value={item.id}
+                                    disabled={visitItemIds.includes(item.id)}
+                                >
+                                    {item.item_number} - {item.item_name}
+                                </option>
+                            ))}
+                        </select>
+                        
+                        {/* Display currently selected items with remove buttons */}
+                        <div className="flex flex-col gap-1 mt-2">
+                            {visitItemIds.length > 0 ? (
+                                visitItemIds.map(itemId => {
+                                    const item = items.find(i => i.id === itemId);
+                                    return (
+                                        <div key={itemId} className="flex items-center gap-1">
+                                            <div className="text-sm badge badge-outline">
+                                                {item ? `${item.item_number} - ${item.item_name}` : 'Unknown'}
+                                            </div>
+                                            <button 
+                                                className="btn btn-xs btn-ghost text-error"
+                                                onClick={() => handleRemoveItem(itemId)}
+                                                type="button"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <span className="text-neutral-400">No items selected</span>
+                            )}
+                        </div>
+                        
+                        {/* Hidden input to store the actual value */}
+                        <input 
+                            type="hidden" 
+                            value={visitItemIds.join(',')} 
+                            onBlur={props.onBlur}
+                        />
+                    </div>
+                );
+            },
+            // When editing starts, prepare the value for the custom editor
+            getEditValue: (visit: Visit) => {
+                const visitItems = (visit.item_id || []) as string[];
+                return visitItems.join(',');
+            }
         },
         {
             key: 'notes',
@@ -341,7 +572,8 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             number_three: '',
             number_four: '',
             route_id: defaultRouteId, // Use the first route as default
-            order: highestOrder + 1 // Set order to be highest + 1
+            order: highestOrder + 1, // Set order to be highest + 1
+            item_id: [] // Initialize with empty array of items
         };
 
         try {
@@ -459,7 +691,7 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                 onDragEnd={handleDragEnd}
             >
                 <SortableContext 
-                    items={sortedVisits.map(visit => visit.id)}
+                    items={sortedVisits.map(visit => visit.id)} // Still using ID for unique identification in drag-drop
                     strategy={horizontalListSortingStrategy}
                 >
                     <TableSection

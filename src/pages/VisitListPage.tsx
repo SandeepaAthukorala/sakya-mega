@@ -68,7 +68,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
 
     // --- Derived Options ---
     const itemOptions: SelectOption[] = useMemo(() => allItems.map(item => ({
-        value: item.id, label: `${item.item_name} (${item.item_number})`
+        value: item.item_number.toString(), label: `${item.item_name} (${item.item_number})`
     })), [allItems]);
 
     const routeOptions: SelectOption[] = useMemo(() => allRoutes.map(route => ({
@@ -96,8 +96,9 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
 
             const initialItems = (visit.item_id || [])
                 .map(id => {
-                    const item = allItems.find(i => i.id === id);
-                    return item ? { value: item.id, label: `${item.item_name} (${item.item_number})` } : null;
+                    // Find item by id (which could be either a UUID or an item_number string)
+                    const item = allItems.find(i => i.id === id || i.item_number.toString() === id);
+                    return item ? { value: item.item_number.toString(), label: `${item.item_name} (${item.item_number})` } : null;
                 })
                 .filter((item): item is SelectOption => item !== null);
             setAddedItems(initialItems);
@@ -173,6 +174,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
             status: status,
             notes: notes || null,
             route_id: routeId,
+            // Use item_number values (stored as strings) for item identification
             item_id: addedItems.map(item => item.value),
             // Include capturedLocation if it exists, otherwise retain original (or let backend handle if needed)
             location: capturedLocation !== null ? capturedLocation : visit.location // Send new or original
@@ -388,7 +390,12 @@ const VisitListPage: React.FC = () => {
          const lowerSearchTerm = searchTerm.toLowerCase();
          const start = startDateFilter ? startOfDay(parseISO(startDateFilter)) : null;
          const end = endDateFilter ? endOfDay(parseISO(endDateFilter)) : null;
-         const itemMap = new Map(allItems.map(item => [item.id, `${item.item_name} ${item.item_number}`]));
+         // Create a map that can look up items by both id and item_number
+         const itemMap = new Map();
+         allItems.forEach(item => {
+             itemMap.set(item.id, `${item.item_name} ${item.item_number}`);
+             itemMap.set(item.item_number.toString(), `${item.item_name} ${item.item_number}`);
+         });
          return visits.filter(visit => {
              if (start || end) { const visitDate = parseISO(visit.date); if (!isValid(visitDate)) return false; if (start && visitDate < start) return false; if (end && visitDate > end) return false; }
              if (statusFilter !== 'all' && visit.status !== statusFilter) return false;
@@ -403,7 +410,11 @@ const VisitListPage: React.FC = () => {
     const clearFilters = () => { /* ... */ setStatusFilter('all'); setTypeFilter('all'); setStartDateFilter(''); setEndDateFilter(''); setShowFilters(false); };
     const clearSearch = () => setSearchTerm('');
     const formatDate = (dateString: string) => { /* ... */ try { return format(parseISO(dateString), 'MMM d, yyyy'); } catch { return dateString; } };
-    const getItemDisplay = (itemId: string): string => { /* ... */ const item = allItems.find(i => i.id === itemId); return item ? `${item.item_name} (${item.item_number})` : `Unknown Item`; };
+    const getItemDisplay = (itemId: string): string => { 
+        // Find item by either UUID or item_number string
+        const item = allItems.find(i => i.id === itemId || i.item_number.toString() === itemId); 
+        return item ? `${item.item_name} (${item.item_number})` : `Unknown Item`; 
+    };
     const getStatusClasses = (status: string) => { /* ... */ switch (status?.toLowerCase()) { case 'completed': return 'bg-green-100 text-green-700 border-green-300'; case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-300'; case 'cancelled': return 'bg-red-100 text-red-700 border-red-300'; case 'return': return 'bg-blue-100 text-blue-700 border-blue-300'; default: return 'bg-gray-100 text-gray-700 border-gray-300'; } };
 
 

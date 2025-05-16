@@ -50,8 +50,9 @@ const ItemsSection: React.FC<ItemsSectionProps> = ({
         {
             key: 'value',
             header: 'Value',
-            editable: false,
+            editable: true,
             filterable: true,
+            type: 'number',
             render: (item: Item) => (
                 <span>{item.value ? `Rs.${item.value.toFixed(2)}` : 'N/A'}</span>
             )
@@ -63,7 +64,8 @@ const ItemsSection: React.FC<ItemsSectionProps> = ({
         const newItemNumber = Math.max(0, ...items.map(i => i.item_number || 0)) + 1;
         const newItem: NewItemDataType = {
             item_name: `New Item ${newItemNumber}`,
-            item_number: newItemNumber
+            item_number: newItemNumber,
+            value: 0
         };
 
         try {

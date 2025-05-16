@@ -57,7 +57,7 @@ const RoutesSection: React.FC<RoutesSectionProps> = ({
             editable: true,
             filterable: true,
             type: 'select',
-            options: ['', ...allRefs.map(ref => `${ref.id}|${ref.first_name} ${ref.last_name}`)],
+            options: [{ value: '', label: 'Unassigned' }, ...allRefs.map(ref => ({ value: ref.id, label: `${ref.first_name} ${ref.last_name}` }))],
             render: (route: Route) => (
                 <div>
                     {route.ref_id ? (

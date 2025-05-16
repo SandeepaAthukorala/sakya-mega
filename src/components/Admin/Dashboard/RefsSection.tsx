@@ -127,12 +127,6 @@ const RefsSection: React.FC<RefsSectionProps> = ({
             filterable: true
         },
         {
-            key: 'phone',
-            header: 'Phone',
-            editable: true,
-            filterable: true
-        },
-        {
             key: 'access',
             header: 'Access',
             editable: false,
@@ -214,21 +208,21 @@ const RefsSection: React.FC<RefsSectionProps> = ({
             {/* Global Access Toggle Button */}
             <div className="flex justify-end mb-4">
                 <button 
-                    className={`btn ${allRefsHaveAccess ? 'btn-error' : 'btn-success'} ${isUpdatingAllAccess ? 'loading' : ''} btn-lg shadow-lg transition-all duration-300 hover:scale-105`}
+                    className={`btn ${allRefsHaveAccess ? 'btn-error' : 'btn-success'} ${isUpdatingAllAccess ? 'loading' : ''} btn-sm px-2 py-1 text-sm shadow-md transition-all duration-300 hover:scale-105`}
                     onClick={handleToggleAllAccess}
                     disabled={isUpdatingAllAccess}
                 >
                     <span className="flex items-center gap-2">
                         {allRefsHaveAccess ? (
                             <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                 </svg>
                                 Disable All Access
                             </>
                         ) : (
                             <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                                 Enable All Access
@@ -247,8 +241,8 @@ const RefsSection: React.FC<RefsSectionProps> = ({
                 itemType="ref"
                 searchPlaceholder="Search referrers..."
                 filters={filters}
-                onAddItem={handleAddRef}
-                addButtonText="Add Referrer"
+                
+                
                 editingCell={editingCell}
                 setEditingCell={setEditingCell}
                 editValue={editValue}
