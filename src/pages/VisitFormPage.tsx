@@ -364,7 +364,7 @@ const VisitFormPage: React.FC = () => {
                                     onChange={(e) => setBuyerName(e.target.value)}
                                     className="input pl-10"
                                     required
-                                    placeholder="Enter buyer's full name"
+                                    placeholder="නම"
                                 />
                             </div>
                         </div>
@@ -385,7 +385,7 @@ const VisitFormPage: React.FC = () => {
                                     onChange={(e) => setNumberOne(e.target.value)}
                                     className="input pl-10"
                                     required // As per original form, SQL allows NULL
-                                    placeholder="Enter contact number (e.g., 07xxxxxxxx)"
+                                    placeholder="දුරකථන අංකය (උදා: 07xxxxxxxx)"
                                     pattern="[0-9]{10,15}"
                                 />
                             </div>
@@ -406,7 +406,7 @@ const VisitFormPage: React.FC = () => {
                                     value={number_two}
                                     onChange={(e) => setNumberTwo(e.target.value)}
                                     className="input pl-10"
-                                    placeholder="Enter second contact number"
+                                    placeholder="දෙවන දුරකථන අංකය"
                                     pattern="[0-9]{9,15}"
                                 />
                             </div>
@@ -427,7 +427,7 @@ const VisitFormPage: React.FC = () => {
                                     value={number_three}
                                     onChange={(e) => setNumberThree(e.target.value)}
                                     className="input pl-10"
-                                    placeholder="Enter third contact number"
+                                    placeholder="තෙවන දුරකථන අංකය"
                                     pattern="[0-9]{9,15}"
                                 />
                             </div>
@@ -448,7 +448,7 @@ const VisitFormPage: React.FC = () => {
                                     value={number_four}
                                     onChange={(e) => setNumberFour(e.target.value)}
                                     className="input pl-10"
-                                    placeholder="Enter fourth contact number"
+                                    placeholder="සිව්වන දුරකථන අංකය"
                                     pattern="[0-9]{9,15}"
                                 />
                             </div>
@@ -469,7 +469,7 @@ const VisitFormPage: React.FC = () => {
                                     value={billNumber}
                                     onChange={(e) => setBillNumber(e.target.value)}
                                     className="input pl-10"
-                                    placeholder="Enter bill number"
+                                    placeholder="බිල්පත් අංකය"
                                 />
                             </div>
                         </div>
@@ -488,7 +488,7 @@ const VisitFormPage: React.FC = () => {
                                     value={notes}
                                     onChange={(e) => setNotes(e.target.value)}
                                     className="input pl-10 h-24" // Or min-h-[100px]
-                                    placeholder="Enter additional notes or special instructions..."
+                                    placeholder="සටහන්"
                                 />
                             </div>
                         </div>
@@ -496,7 +496,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Item Selection Area */}
                         <div>
                             <label htmlFor="itemToAdd" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Select Item to Add
+                                භාණ්ඩ තෝරන්න
                             </label>
                             <div className="flex items-center space-x-2">
                                 <div className="relative flex-grow">
@@ -532,7 +532,7 @@ const VisitFormPage: React.FC = () => {
 
                         {addedItems.length > 0 && (
                             <div className="mt-3 space-y-2">
-                                <h3 className="text-sm font-medium text-neutral-700">Added Items:</h3>
+                                <h3 className="text-sm font-medium text-neutral-700">එකතු කළ භාණ්ඩ:</h3>
                                 <ul className="border border-neutral-200 rounded-md p-2 bg-neutral-50 max-h-32 overflow-y-auto">
                                     {addedItems.map((item, index) => (
                                         <li key={`${item.value}-${index}`}
@@ -590,9 +590,9 @@ const VisitFormPage: React.FC = () => {
                                     className="input pr-10 appearance-none"
                                     required
                                 >
-                                    <option value="Sample">Sample</option>
-                                    <option value="Sittu">Sittu</option>
-                                    <option value="Over">Over</option>
+                                    <option value="Sample">සාම්පල</option>
+                                    <option value="Sittu">සිට්ටු</option>
+                                    <option value="Over">ඕවර්</option>
                                 </select>
                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                                     <ChevronDown size={18} className="text-neutral-500" />
@@ -621,7 +621,7 @@ const VisitFormPage: React.FC = () => {
                                     value={address}
                                     onChange={(e) => setAddress(e.target.value)}
                                     className="input pl-10"
-                                    placeholder="Enter street address, city"
+                                    placeholder="ලිපිනය ඇතුළත් කරන්න"
                                     required
                                 />
                             </div>

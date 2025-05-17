@@ -354,32 +354,62 @@ const VisitListPage: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [typeFilter, setTypeFilter] = useState<string>('all');
+    const [refFilter, setRefFilter] = useState<string>('all');
+    const [routeFilter, setRouteFilter] = useState<string>('all');
     const [startDateFilter, setStartDateFilter] = useState('');
     const [endDateFilter, setEndDateFilter] = useState('');
     const deliveryTypes: Visit['type'][] = ['Sample', 'Sittu', 'Over'];
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [visitToEdit, setVisitToEdit] = useState<Visit | null>(null);
 
+    // State for refs (users with role 'Ref')
+    const [allRefs, setAllRefs] = useState<{id: string; first_name: string; last_name: string}[]>([]);
+
     // --- Fetch Data ---
     useEffect(() => {
-        // ... fetchAllData logic (same as before, fetches visits, items, routes) ...
         const fetchAllData = async () => {
             if (!user) { setIsLoading(false); return; }
             setIsLoading(true);
             try {
-                const [visitsRes, itemsRes, routesRes] = await Promise.all([
-                    supabase.from('visits').select('*').eq('ref_id', user.id).order('date', { ascending: false }),
+                // Different queries based on user role
+                const visitsQuery = user.role === 'Admin' 
+                    ? supabase.from('visits').select('*').order('date', { ascending: false })
+                    : supabase.from('visits').select('*').eq('ref_id', user.id).order('date', { ascending: false });
+                
+                const promises = [
+                    visitsQuery,
                     supabase.from('items').select('id, item_name, item_number'),
                     supabase.from('routes').select('id, name, number')
-                ]);
+                ];
+                
+                // Only fetch refs if user is admin
+                if (user.role === 'Admin') {
+                    promises.push(supabase.from('users').select('id, first_name, last_name').eq('role', 'Ref'));
+                }
+                
+                const results = await Promise.all(promises);
+                
+                const [visitsRes, itemsRes, routesRes, refsRes] = results;
+                
                 if (visitsRes.error) throw visitsRes.error;
                 if (itemsRes.error) throw itemsRes.error;
                 if (routesRes.error) throw routesRes.error;
+                
                 setAllItems(itemsRes.data || []);
                 setAllRoutes(routesRes.data || []);
                 setVisits(visitsRes.data || []);
-            } catch (error) { console.error('Failed to fetch data:', error); /* alert */ }
-            finally { setIsLoading(false); }
+                
+                // Set refs data if admin
+                if (user.role === 'Admin' && refsRes && !refsRes.error) {
+                    setAllRefs(refsRes.data || []);
+                }
+            } catch (error) { 
+                console.error('Failed to fetch data:', error); 
+                // Consider adding a user-friendly error message here
+            }
+            finally { 
+                setIsLoading(false); 
+            }
         };
         fetchAllData();
     }, [user]);
@@ -406,14 +436,16 @@ const VisitListPage: React.FC = () => {
              }
              if (statusFilter !== 'all' && visit.status !== statusFilter) return false;
              if (typeFilter !== 'all' && visit.type !== typeFilter) return false;
+             if (routeFilter !== 'all' && visit.route_id !== routeFilter) return false;
+             if (refFilter !== 'all' && visit.ref_id !== refFilter) return false;
              if (lowerSearchTerm) { const itemNames = (visit.item_id || []).map(id => itemMap.get(id) || '').join(' ').toLowerCase(); const searchableText = [visit.buyer_name?.toLowerCase(), visit.address?.toLowerCase(), visit.notes?.toLowerCase(), visit.mobile_phone, visit.land_phone, itemNames].join(' '); if (!searchableText.includes(lowerSearchTerm)) return false; }
              return true;
          });
-    }, [visits, searchTerm, statusFilter, typeFilter, startDateFilter, endDateFilter, allItems]);
+    }, [visits, searchTerm, statusFilter, typeFilter, routeFilter, refFilter, startDateFilter, endDateFilter, allItems]);
 
 
     // --- Helpers ---
-    const clearFilters = () => { /* ... */ setStatusFilter('all'); setTypeFilter('all'); setStartDateFilter(''); setEndDateFilter(''); setShowFilters(false); };
+    const clearFilters = () => { /* ... */ setStatusFilter('all'); setTypeFilter('all'); setRefFilter('all'); setRouteFilter('all'); setStartDateFilter(''); setEndDateFilter(''); setShowFilters(false); };
     const clearSearch = () => setSearchTerm('');
     const formatDate = (dateString: string) => { /* ... */ try { return format(parseISO(dateString), 'MMM d, yyyy'); } catch { return dateString; } };
     const getItemDisplay = (itemId: string): string => { 
@@ -499,9 +531,63 @@ const VisitListPage: React.FC = () => {
 
             {/* Filters */}
              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
-                 <div className="flex justify-between items-center mb-3"> <button onClick={() => setShowFilters(!showFilters)} className="btn btn-secondary btn-sm"> <Filter size={16} className="mr-1.5" /> Filters </button> {(statusFilter !== 'all' || typeFilter !== 'all' || startDateFilter || endDateFilter) && (<button onClick={clearFilters} className="text-sm text-blue-600 hover:underline font-medium">Clear All Filters</button>)} </div>
-                 {showFilters && (<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-3 border-t border-gray-200 animate-fade-in"> {/* Filter Inputs */} <div> <label htmlFor="statusFilter" className="lbl-xs">Status</label> <select id="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input input-sm w-full"> <option value="all">All</option> <option value="Pending">Pending</option> <option value="Completed">Completed</option> <option value="Cancelled">Cancelled</option>
-<option value="Return">Return</option> </select> </div> <div> <label htmlFor="typeFilter" className="lbl-xs">Type</label> <select id="typeFilter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input input-sm w-full"> <option value="all">All</option> {deliveryTypes.map(type => <option key={type} value={type}>{type}</option>)} </select> </div> <div> <label htmlFor="startDateFilter" className="lbl-xs">Start Date</label> <input type="date" id="startDateFilter" value={startDateFilter} onChange={(e) => setStartDateFilter(e.target.value)} className="input input-sm w-full" /> </div> <div> <label htmlFor="endDateFilter" className="lbl-xs">End Date</label> <input type="date" id="endDateFilter" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="input input-sm w-full" /> </div> </div>)}
+                 <div className="flex justify-between items-center mb-3"> <button onClick={() => setShowFilters(!showFilters)} className="btn btn-secondary btn-sm"> <Filter size={16} className="mr-1.5" /> Filters </button> {(statusFilter !== 'all' || typeFilter !== 'all' || routeFilter !== 'all' || refFilter !== 'all' || startDateFilter || endDateFilter) && (<button onClick={clearFilters} className="text-sm text-blue-600 hover:underline font-medium">Clear All Filters</button>)} </div>
+                 {showFilters && (<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-3 border-t border-gray-200 animate-fade-in"> 
+                    {/* Status Filter */}
+                    <div> 
+                        <label htmlFor="statusFilter" className="lbl-xs">Status</label> 
+                        <select id="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input input-sm w-full"> 
+                            <option value="all">All</option> 
+                            <option value="Pending">Pending</option> 
+                            <option value="Completed">Completed</option> 
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Return">Return</option> 
+                        </select> 
+                    </div> 
+                    
+                    {/* Type Filter */}
+                    <div> 
+                        <label htmlFor="typeFilter" className="lbl-xs">Type</label> 
+                        <select id="typeFilter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input input-sm w-full"> 
+                            <option value="all">All</option> 
+                            {deliveryTypes.map(type => <option key={type} value={type}>{type}</option>)} 
+                        </select> 
+                    </div> 
+                    
+                    {/* Route Filter */}
+                    <div> 
+                        <label htmlFor="routeFilter" className="lbl-xs">Route</label> 
+                        <select id="routeFilter" value={routeFilter} onChange={(e) => setRouteFilter(e.target.value)} className="input input-sm w-full"> 
+                            <option value="all">All</option> 
+                            {allRoutes.map(route => <option key={route.id} value={route.id}>{route.name} ({route.number})</option>)} 
+                        </select> 
+                    </div> 
+                    
+                    {/* Ref Filter - Only show if user is Admin */}
+                     {user?.role === 'Admin' && (
+                         <div> 
+                             <label htmlFor="refFilter" className="lbl-xs">Ref</label> 
+                             <select id="refFilter" value={refFilter} onChange={(e) => setRefFilter(e.target.value)} className="input input-sm w-full"> 
+                                 <option value="all">All</option> 
+                                 {allRefs.map(ref => (
+                                     <option key={ref.id} value={ref.id}>
+                                         {ref.first_name} {ref.last_name}
+                                     </option>
+                                 ))}
+                             </select> 
+                         </div>
+                     )}
+                    
+                    {/* Date Filters */}
+                    <div> 
+                        <label htmlFor="startDateFilter" className="lbl-xs">Start Date</label> 
+                        <input type="date" id="startDateFilter" value={startDateFilter} onChange={(e) => setStartDateFilter(e.target.value)} className="input input-sm w-full" /> 
+                    </div> 
+                    <div> 
+                        <label htmlFor="endDateFilter" className="lbl-xs">End Date</label> 
+                        <input type="date" id="endDateFilter" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="input input-sm w-full" /> 
+                    </div> 
+                </div>)}
              </div>
 
             {/* Visit List Area */}
