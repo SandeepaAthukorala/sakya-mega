@@ -66,7 +66,7 @@ interface TableSectionProps {
     label: string;
     filter: (item: any) => boolean;
   }[];
-  onAddItem?: () => void;
+  onAddItem?: (activeFilter: string) => void;
   addButtonText?: string;
   editingCell: EditingCellState;
   setEditingCell: React.Dispatch<React.SetStateAction<EditingCellState>>;
@@ -102,15 +102,75 @@ const TableSection: React.FC<TableSectionProps> = ({
 }) => {
   // State for filtering and search
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
+  // Replace single activeFilter with a map of selected filters by category
+  const [selectedFilters, setSelectedFilters] = useState<{
+    regular: string[];
+    type: string[];
+    status: string[];
+    route: string[];
+  }>({
+    regular: [],
+    type: [],
+    status: [],
+    route: []
+  });
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [columnFilters, setColumnFilters] = useState<{[key: string]: string}>({});
   const [showColumnFilters, setShowColumnFilters] = useState(false);
+  
+  // Helper function to determine if all filters are cleared
+  const areAllFiltersCleared = () => {
+    return (
+      selectedFilters.regular.length === 0 &&
+      selectedFilters.type.length === 0 &&
+      selectedFilters.status.length === 0 &&
+      selectedFilters.route.length === 0
+    );
+  };
+  
+  // Helper function to get filter category from key
+  const getFilterCategory = (filterKey: string): 'regular' | 'type' | 'status' | 'route' => {
+    if (filterKey.startsWith('type-')) return 'type';
+    if (filterKey.startsWith('status-')) return 'status';
+    if (filterKey.startsWith('route-') || filterKey === 'no-route') return 'route';
+    return 'regular';
+  };
+  
+  // Toggle a filter selection
+  const toggleFilter = (filterKey: string) => {
+    const category = getFilterCategory(filterKey);
+    
+    setSelectedFilters(prev => {
+      // If this filter is already selected, remove it
+      if (prev[category].includes(filterKey)) {
+        return {
+          ...prev,
+          [category]: prev[category].filter(key => key !== filterKey)
+        };
+      }
+      // Otherwise add it, but first remove any other filters in the same category
+      // since we don't allow multiple selections within the same category
+      return {
+        ...prev,
+        [category]: [filterKey]
+      };
+    });
+  };
+  
+  // Clear all filters
+  const clearAllFilters = () => {
+    setSelectedFilters({
+      regular: [],
+      type: [],
+      status: [],
+      route: []
+    });
+  };
 
-  // Filter data based on search term, active filter, date range, and column filters
+  // Filter data based on search term, multiple filters, date range, and column filters
   const filteredData = React.useMemo(() => {
     if (isCollapsed) return [];
     
@@ -124,14 +184,34 @@ const TableSection: React.FC<TableSectionProps> = ({
           return false;
         });
       
-      // Apply type filter
-      let filterMatch = activeFilter === 'all';
-      if (!filterMatch) {
-        const activeFilterObj = filters.find(f => f.key === activeFilter);
-        if (activeFilterObj) {
-          filterMatch = activeFilterObj.filter(item);
-        }
-      }
+      // Apply multiple filters from different categories
+      // If no filters are selected in a category, all items pass that category's filter
+      let regularFilterMatch = selectedFilters.regular.length === 0 || 
+        selectedFilters.regular.some(filterKey => {
+          const filterObj = filters.find(f => f.key === filterKey);
+          return filterObj ? filterObj.filter(item) : false;
+        });
+      
+      let typeFilterMatch = selectedFilters.type.length === 0 || 
+        selectedFilters.type.some(filterKey => {
+          const filterObj = filters.find(f => f.key === filterKey);
+          return filterObj ? filterObj.filter(item) : false;
+        });
+      
+      let statusFilterMatch = selectedFilters.status.length === 0 || 
+        selectedFilters.status.some(filterKey => {
+          const filterObj = filters.find(f => f.key === filterKey);
+          return filterObj ? filterObj.filter(item) : false;
+        });
+      
+      let routeFilterMatch = selectedFilters.route.length === 0 || 
+        selectedFilters.route.some(filterKey => {
+          const filterObj = filters.find(f => f.key === filterKey);
+          return filterObj ? filterObj.filter(item) : false;
+        });
+      
+      // Combine all filter categories - an item must pass ALL categories to be included
+      const filterMatch = regularFilterMatch && typeFilterMatch && statusFilterMatch && routeFilterMatch;
       
       // Apply date filter if dateField is provided
       let dateMatch = true;
@@ -182,7 +262,7 @@ const TableSection: React.FC<TableSectionProps> = ({
       
       return searchMatch && filterMatch && dateMatch && columnFilterMatch;
     });
-  }, [data, searchTerm, activeFilter, filters, isCollapsed, startDate, endDate, dateField, columnFilters]);
+  }, [data, searchTerm, selectedFilters, filters, isCollapsed, startDate, endDate, dateField, columnFilters]);
   
   // Get unique values for each filterable column
   const getUniqueColumnValues = (columnKey: string) => {
@@ -489,7 +569,16 @@ const TableSection: React.FC<TableSectionProps> = ({
         {!isCollapsed && onAddItem && (
           <button 
             className="btn btn-primary"
-            onClick={onAddItem}
+            onClick={() => {
+              // Pass the first selected filter from any category, or 'all' if none selected
+              const firstSelectedFilter = 
+                selectedFilters.regular[0] || 
+                selectedFilters.type[0] || 
+                selectedFilters.status[0] || 
+                selectedFilters.route[0] || 
+                'all';
+              onAddItem(firstSelectedFilter);
+            }}
           >
             {addButtonText}
           </button>
@@ -504,33 +593,78 @@ const TableSection: React.FC<TableSectionProps> = ({
               <div className="flex flex-col gap-2">
                 {filters.length > 0 && (
                   <>
+                    {/* Clear all filters button */}
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Filters</span>
+                      {!areAllFiltersCleared() && (
+                        <button 
+                          className="btn btn-ghost btn-xs"
+                          onClick={clearAllFilters}
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+                    
                     {/* Regular filters */}
                     <div className="flex flex-wrap gap-2">
-                      <button 
-                        className={`btn ${activeFilter === 'all' ? 'btn-primary' : 'btn-outline'} btn-sm`}
-                        onClick={() => setActiveFilter('all')}
-                      >
-                        All
-                      </button>
-                      {filters.filter(filter => !filter.key.startsWith('route-') && filter.key !== 'no-route').map(filter => (
+                      {filters.filter(filter => 
+                        !filter.key.startsWith('route-') && 
+                        filter.key !== 'no-route' && 
+                        !filter.key.startsWith('type-') && 
+                        !filter.key.startsWith('status-')
+                      ).map(filter => (
                         <button 
                           key={filter.key}
-                          className={`btn ${activeFilter === filter.key ? 'btn-primary' : 'btn-outline'} btn-sm`}
-                          onClick={() => setActiveFilter(filter.key)}
+                          className={`btn ${selectedFilters.regular.includes(filter.key) ? 'btn-primary' : 'btn-outline'} btn-sm`}
+                          onClick={() => toggleFilter(filter.key)}
                         >
                           {filter.label}
                         </button>
                       ))}
                     </div>
                     
+                    {/* Type filters on a new line */}
+                    {filters.some(filter => filter.key.startsWith('type-')) && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="w-full text-xs font-medium text-neutral-500">Type:</span>
+                        {filters.filter(filter => filter.key.startsWith('type-')).map(filter => (
+                          <button 
+                            key={filter.key}
+                            className={`btn ${selectedFilters.type.includes(filter.key) ? 'btn-primary' : 'btn-outline'} px-2 py-1 text-xs gap-1`}
+                            onClick={() => toggleFilter(filter.key)}
+                          >
+                            {filter.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Status filters on a new line */}
+                    {filters.some(filter => filter.key.startsWith('status-')) && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="w-full text-xs font-medium text-neutral-500">Status:</span>
+                        {filters.filter(filter => filter.key.startsWith('status-')).map(filter => (
+                          <button 
+                            key={filter.key}
+                            className={`btn ${selectedFilters.status.includes(filter.key) ? 'btn-primary' : 'btn-outline'} px-2 py-1 text-xs gap-1`}
+                            onClick={() => toggleFilter(filter.key)}
+                          >
+                            {filter.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    
                     {/* Route filters on a new line */}
                     {filters.some(filter => filter.key.startsWith('route-') || filter.key === 'no-route') && (
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <span className="w-full text-xs font-medium text-neutral-500">Route:</span>
                         {filters.filter(filter => filter.key.startsWith('route-') || filter.key === 'no-route').map(filter => (
                           <button 
                             key={filter.key}
-                            className={`btn ${activeFilter === filter.key ? 'btn-error' : 'btn-outline'} px-2 py-1 text-xs gap-1`}
-                            onClick={() => setActiveFilter(filter.key)}
+                            className={`btn ${selectedFilters.route.includes(filter.key) ? 'btn-error' : 'btn-outline'} px-2 py-1 text-xs gap-1`}
+                            onClick={() => toggleFilter(filter.key)}
                           >
                             {filter.label}
                           </button>

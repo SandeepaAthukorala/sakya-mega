@@ -519,6 +519,24 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
         }
     ];
     
+    // Define type filters
+    const typeFilters = useMemo(() => {
+        return deliveryTypes.map(type => ({
+            key: `type-${type}`,
+            label: type,
+            filter: (visit: Visit) => visit.type === type
+        }));
+    }, [deliveryTypes]);
+    
+    // Define status filters
+    const statusFilters = useMemo(() => {
+        return visitStatuses.map(status => ({
+            key: `status-${status}`,
+            label: status,
+            filter: (visit: Visit) => visit.status === status
+        }));
+    }, [visitStatuses]);
+    
     // Add route filters based on available routes
     const routeFilters = useMemo(() => {
         // Create a filter for visits with no route assigned
@@ -539,31 +557,61 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
     }, [routesData]);
     
     // Combine all filters
-    const allFilters = [...filters, ...routeFilters];
+    const allFilters = [...filters, ...routeFilters, ...typeFilters, ...statusFilters];
 
     // Handle adding a new visit
-    const handleAddVisit = async () => {
+    const handleAddVisit = async (activeFilter: string = 'all') => {
         // Check if we have any routes available
         if (routesData.length === 0) {
             console.error('Cannot add visit: No routes available');
             return;
         }
         
-        // Get the first route as default
-        const defaultRouteId = routesData[0].id;
+        // Extract filter values from activeFilter
+        let selectedRouteId = null;
+        let selectedType = 'Sample';
+        let selectedStatus = 'Pending';
         
-        // Find the highest order in the default route
-        const visitsInDefaultRoute = visits.filter(v => v.route_id === defaultRouteId);
-        const highestOrder = visitsInDefaultRoute.length > 0 
-            ? Math.max(...visitsInDefaultRoute.map(v => v.order || 0)) 
-            : 0;
+        // Check if a specific route is selected
+        if (activeFilter.startsWith('route-')) {
+            const routeId = activeFilter.replace('route-', '');
+            selectedRouteId = routeId;
+        }
         
-        // Create a basic new visit with default values
+        // Check if a specific type is selected
+        if (activeFilter.startsWith('type-')) {
+            const type = activeFilter.replace('type-', '');
+            if (deliveryTypes.includes(type as Visit['type'])) {
+                selectedType = type as Visit['type'];
+            }
+        }
+        
+        // Check if a specific status is selected
+        if (activeFilter.startsWith('status-')) {
+            const status = activeFilter.replace('status-', '');
+            if (visitStatuses.includes(status as Visit['status'])) {
+                selectedStatus = status as Visit['status'];
+            }
+        }
+        
+        // Use the selected route or default to the first route
+        const defaultRouteId = selectedRouteId || (routesData.length > 0 ? routesData[0].id : null);
+        
+        // Find the highest order in the selected route
+        let highestOrder = 0;
+        if (defaultRouteId) {
+            const visitsInSelectedRoute = visits.filter(v => v.route_id === defaultRouteId);
+            highestOrder = visitsInSelectedRoute.length > 0 
+                ? Math.max(...visitsInSelectedRoute.map(v => v.order || 0)) 
+                : 0;
+        }
+        
+        // Create a basic new visit with values based on selected filters
         const newVisit: NewVisitDataType = {
             buyer_name: 'New Visit',
             date: new Date().toISOString(),
-            type: 'Sample',
-            status: 'Pending',
+            type: selectedType,
+            status: selectedStatus,
             ref_id: allRefs.length > 0 ? allRefs[0].id : null,
             address: '',
             location: { lat: 0, lng: 0 },
@@ -571,8 +619,8 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             number_two: '',
             number_three: '',
             number_four: '',
-            route_id: defaultRouteId, // Use the first route as default
-            order: highestOrder + 1, // Set order to be highest + 1
+            route_id: defaultRouteId,
+            order: defaultRouteId ? highestOrder + 1 : null, // Set order only if route is selected
             item_id: [] // Initialize with empty array of items
         };
 
