@@ -386,7 +386,7 @@ const VisitListPage: React.FC = () => {
 
     // --- Memoized Filtering ---
     const filteredVisits = useMemo(() => {
-        // ... filtering logic (same as before) ...
+        // Filtering logic - show all records by default, only filter by date when user sets one
          const lowerSearchTerm = searchTerm.toLowerCase();
          const start = startDateFilter ? startOfDay(parseISO(startDateFilter)) : null;
          const end = endDateFilter ? endOfDay(parseISO(endDateFilter)) : null;
@@ -397,7 +397,13 @@ const VisitListPage: React.FC = () => {
              itemMap.set(item.item_number.toString(), `${item.item_name} ${item.item_number}`);
          });
          return visits.filter(visit => {
-             if (start || end) { const visitDate = parseISO(visit.date); if (!isValid(visitDate)) return false; if (start && visitDate < start) return false; if (end && visitDate > end) return false; }
+             // Only apply date filtering when user has set a date filter
+             if (startDateFilter || endDateFilter) { 
+                 const visitDate = parseISO(visit.date); 
+                 if (!isValid(visitDate)) return false; 
+                 if (start && visitDate < start) return false; 
+                 if (end && visitDate > end) return false; 
+             }
              if (statusFilter !== 'all' && visit.status !== statusFilter) return false;
              if (typeFilter !== 'all' && visit.type !== typeFilter) return false;
              if (lowerSearchTerm) { const itemNames = (visit.item_id || []).map(id => itemMap.get(id) || '').join(' ').toLowerCase(); const searchableText = [visit.buyer_name?.toLowerCase(), visit.address?.toLowerCase(), visit.notes?.toLowerCase(), visit.mobile_phone, visit.land_phone, itemNames].join(' '); if (!searchableText.includes(lowerSearchTerm)) return false; }
