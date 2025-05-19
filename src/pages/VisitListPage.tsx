@@ -51,6 +51,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
     const [numberTwo, setNumberTwo] = useState('');
     const [numberThree, setNumberThree] = useState('');
     const [numberFour, setNumberFour] = useState('');
+    const [billNumber, setBillNumber] = useState('');
     const [address, setAddress] = useState('');
     const [visitDate, setVisitDate] = useState('');
     const [visitType, setVisitType] = useState<Visit['type']>('Sample');
@@ -83,6 +84,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
             setNumberTwo(visit.number_two || '');
             setNumberThree(visit.number_three || '');
             setNumberFour(visit.number_four || '');
+            setBillNumber(visit.bill_number || '');
             setAddress(visit.address || '');
             setVisitDate(visit.date ? format(parseISO(visit.date), 'yyyy-MM-dd') : '');
             setVisitType(visit.type);
@@ -168,6 +170,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
             number_two: numberTwo || null,
             number_three: numberThree || null,
             number_four: numberFour || null,
+            bill_number: billNumber || null,
             address: address,
             date: new Date(visitDate).toISOString(),
             type: visitType,
@@ -256,6 +259,22 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div> <label htmlFor="edit_number_one" className="lbl">Number 1</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_one" value={numberOne} onChange={(e) => setNumberOne(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} pattern="[0-9]{10,15}" /> </div> </div>
                         <div> <label htmlFor="edit_number_two" className="lbl">Number 2 (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_two" value={numberTwo} onChange={(e) => setNumberTwo(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
+                    </div>
+                    
+                    {/* Bill Number */}
+                    <div>
+                        <label htmlFor="edit_bill_number" className="lbl">Bill Number</label>
+                        <div className="relative">
+                            <div className="input-icon left-0 pl-3"><FileText size={18} /></div>
+                            <input 
+                                type="text" 
+                                id="edit_bill_number" 
+                                value={billNumber} 
+                                onChange={(e) => setBillNumber(e.target.value)} 
+                                className="input pl-10" 
+                                disabled={isLoading || isCapturingLocation} 
+                            />
+                        </div>
                     </div>
                     
                     {/* Additional Phone Numbers */}
@@ -373,8 +392,8 @@ const VisitListPage: React.FC = () => {
             try {
                 // Different queries based on user role
                 const visitsQuery = user.role === 'Admin' 
-                    ? supabase.from('visits').select('*').order('date', { ascending: false })
-                    : supabase.from('visits').select('*').eq('ref_id', user.id).order('date', { ascending: false });
+                    ? supabase.from('visits').select('*, routes(name, number)').order('date', { ascending: false })
+                    : supabase.from('visits').select('*, routes(name, number)').eq('ref_id', user.id).order('date', { ascending: false });
                 
                 const promises = [
                     visitsQuery,
@@ -414,7 +433,7 @@ const VisitListPage: React.FC = () => {
         fetchAllData();
     }, [user]);
 
-    // --- Memoized Filtering ---
+    // --- Memoized Filtering and Sorting ---
     const filteredVisits = useMemo(() => {
         // Filtering logic - show all records by default, only filter by date when user sets one
          const lowerSearchTerm = searchTerm.toLowerCase();
@@ -426,7 +445,9 @@ const VisitListPage: React.FC = () => {
              itemMap.set(item.id, `${item.item_name} ${item.item_number}`);
              itemMap.set(item.item_number.toString(), `${item.item_name} ${item.item_number}`);
          });
-         return visits.filter(visit => {
+         
+         // First filter the visits
+         const filtered = visits.filter(visit => {
              // Only apply date filtering when user has set a date filter
              if (startDateFilter || endDateFilter) { 
                  const visitDate = parseISO(visit.date); 
@@ -440,6 +461,37 @@ const VisitListPage: React.FC = () => {
              if (refFilter !== 'all' && visit.ref_id !== refFilter) return false;
              if (lowerSearchTerm) { const itemNames = (visit.item_id || []).map(id => itemMap.get(id) || '').join(' ').toLowerCase(); const searchableText = [visit.buyer_name?.toLowerCase(), visit.address?.toLowerCase(), visit.notes?.toLowerCase(), visit.mobile_phone, visit.land_phone, itemNames].join(' '); if (!searchableText.includes(lowerSearchTerm)) return false; }
              return true;
+         });
+         
+         // Then sort the filtered visits by bill_number in ascending order
+         return [...filtered].sort((a, b) => {
+            // Primary sort by bill_number in ascending order (numerically when possible)
+            const billNumberA = a.bill_number || '';
+            const billNumberB = b.bill_number || '';
+            
+            if (billNumberA !== billNumberB) {
+                // Try to convert bill numbers to numeric values for proper numerical sorting
+                const numA = parseInt(billNumberA.replace(/\D/g, ''));
+                const numB = parseInt(billNumberB.replace(/\D/g, ''));
+                
+                // If both can be converted to valid numbers, compare numerically
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
+                }
+                
+                // Fall back to string comparison if not valid numbers
+                return billNumberA.localeCompare(billNumberB);
+            }
+            
+            // Secondary sort by route_id if bill numbers are the same
+            if (a.route_id !== b.route_id) {
+                if (!a.route_id) return 1;
+                if (!b.route_id) return -1;
+                return a.route_id.localeCompare(b.route_id);
+            }
+            
+            // Tertiary sort by date (most recent first) if both have same bill number and route
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
          });
     }, [visits, searchTerm, statusFilter, typeFilter, routeFilter, refFilter, startDateFilter, endDateFilter, allItems]);
 
@@ -460,7 +512,7 @@ const VisitListPage: React.FC = () => {
     const handleOpenEditModal = (visit: Visit) => { setVisitToEdit(visit); setIsEditModalOpen(true); };
     const handleCloseEditModal = () => { setIsEditModalOpen(false); setVisitToEdit(null); };
 
-    // Updated saveVisit to handle potential location update
+    // Updated saveVisit to handle potential location update and individual phone numbers
     const saveVisit = async (updatedData: Partial<Visit> & { location?: LocationData | null }) => {
         if (!updatedData.id) return;
         setIsSaving(true);
@@ -469,8 +521,11 @@ const VisitListPage: React.FC = () => {
         // Prepare payload, explicitly including location if provided
         const updatePayload: any = {
             buyer_name: dataToUpdate.buyer_name,
-            mobile_phone: dataToUpdate.mobile_phone,
-            land_phone: dataToUpdate.land_phone,
+            number_one: dataToUpdate.number_one,
+            number_two: dataToUpdate.number_two,
+            number_three: dataToUpdate.number_three,
+            number_four: dataToUpdate.number_four,
+            bill_number: dataToUpdate.bill_number,
             address: dataToUpdate.address,
             date: dataToUpdate.date,
             type: dataToUpdate.type,
@@ -618,6 +673,10 @@ const VisitListPage: React.FC = () => {
                                                 {visit.number_four && <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">4:</span><span>{visit.number_four}</span></div>}
                                             </div>
                                             <div className="detail-row"> <MapPin size={14} className="detail-icon" /> <span>{visit.address || <i className="text-gray-400">No address</i>}</span> </div>
+                                            {/* Route Name */}
+                                            <div className="detail-row"> <Route size={14} className="detail-icon" /> <span className="font-medium">Route:</span> <span className="ml-1">{visit.routes?.name || allRoutes.find(r => r.id === visit.route_id)?.name || <i className="text-gray-400">No route</i>}</span> </div>
+                                            {/* Bill Number */}
+                                            <div className="detail-row"> <FileText size={14} className="detail-icon" /> <span className="font-medium">Bill #:</span> <span className="ml-1">{visit.bill_number || <i className="text-gray-400">No bill number</i>}</span> </div>
                                             <div className="detail-row"> <Package size={14} className="detail-icon" /> <div className="flex flex-wrap gap-1"> {(visit.item_id?.length || 0) > 0 ? visit.item_id?.map((id, index) => <span key={`${id}-${index}`} className="badge badge-indigo">{getItemDisplay(id)}</span>) : <i className="text-gray-400 text-xs">No items</i>} </div> </div>
                                             <div className="detail-row text-sm text-gray-500"> <CalendarRange size={14} className="detail-icon" /> {formatDate(visit.date)} </div>
                                             {visit.notes && (<div className="detail-row detail-notes"> <ArrowDownAZ size={14} className="detail-icon" /> <span className="whitespace-pre-wrap italic">{visit.notes}</span> </div>)}

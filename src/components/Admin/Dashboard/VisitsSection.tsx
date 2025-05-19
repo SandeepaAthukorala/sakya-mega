@@ -75,23 +75,40 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
     
     // No longer need formatVisitId as we're using bill_number instead
     
-    // Sort visits by order if available, otherwise by route name
+    // Sort visits by bill_number in ascending order by default
     const sortedVisits = useMemo(() => {
         return [...visits].sort((a, b) => {
-            // First sort by route_id
+            // Primary sort by bill_number in ascending order (numerically when possible)
+            const billNumberA = a.bill_number || '';
+            const billNumberB = b.bill_number || '';
+            
+            if (billNumberA !== billNumberB) {
+                // Try to convert bill numbers to numeric values for proper numerical sorting
+                const numA = parseInt(billNumberA.replace(/\D/g, ''));
+                const numB = parseInt(billNumberB.replace(/\D/g, ''));
+                
+                // If both can be converted to valid numbers, compare numerically
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
+                }
+                
+                // Fall back to string comparison if not valid numbers
+                return billNumberA.localeCompare(billNumberB);
+            }
+            
+            // Secondary sort by route_id if bill numbers are the same
             if (a.route_id !== b.route_id) {
                 if (!a.route_id) return 1;
                 if (!b.route_id) return -1;
                 return a.route_id.localeCompare(b.route_id);
             }
             
-            // Then sort by order if both have order values
+            // Tertiary sort by order if both have order values
             if (typeof a.order === 'number' && typeof b.order === 'number') {
                 return a.order - b.order;
             }
             
-            // Fall back to bill number comparison if order is not available
-            return (a.bill_number || '').localeCompare(b.bill_number || '');
+            return 0; // Equal sorting value
         });
     }, [visits]);
     
@@ -252,48 +269,51 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             editable: true,
             filterable: true,
             type: 'custom', // Use custom type for specialized editing
+
             render: (visit: Visit) => {
-                // Get all items for this visit
-                const visitItems = (visit.item_id || []) as string[];
-                
-                if (visitItems.length === 0) {
+                // Get all item numbers for this visit (item_id now stores item_numbers as strings)
+                const visitItemNumbers = (visit.item_id || []) as string[];
+
+                if (visitItemNumbers.length === 0) {
                     return <span className="text-neutral-400">No items</span>;
                 }
-                
-                // Display each item number and name on a new line with remove button
+
                 return (
                     <div className="flex flex-col gap-1">
-                        {visitItems.map((itemId, index) => {
-                            const item = items.find(i => i.id === itemId);
+                        {visitItemNumbers.map((itemNumberStr, index) => {
+                            const item = items.find(i => String(i.item_number) === itemNumberStr);
                             return (
                                 <div key={index} className="flex items-center gap-1">
                                     <div className="text-sm badge badge-outline">
-                                        {item ? `${item.item_number} - ${item.item_name}` : 'Unknown'}
+                                        {item ? `${item.item_number} - ${item.item_name}${item.value ? ` (Rs.${item.value})` : ''}` : `Item ${itemNumberStr} (Unknown)`}
                                     </div>
-                                    {/* This button will only be shown in view mode, not edit mode */}
-                                    <button 
-                                        className="btn btn-xs btn-ghost text-error" 
+                                    <button
+                                        className="btn btn-xs btn-ghost text-error"
                                         onClick={async (e) => {
-                                            e.stopPropagation(); // Prevent triggering edit mode
+                                            e.stopPropagation();
+                                            // Find the index of the first occurrence of the item to remove
+                                            const indexToRemove = visitItemNumbers.findIndex(num => num === itemNumberStr);
                                             
-                                            // Remove this item from the visit
-                                            const updatedItemIds = visitItems.filter(id => id !== itemId);
-                                            
-                                            try {
-                                                // Update the database
-                                                const { error } = await supabase
-                                                    .from('visits')
-                                                    .update({ item_id: updatedItemIds })
-                                                    .eq('id', visit.id);
+                                            // Only proceed if the item was found
+                                            if (indexToRemove !== -1) {
+                                                // Create a new array without the first occurrence of the item
+                                                const updatedItemNumbers = [
+                                                    ...visitItemNumbers.slice(0, indexToRemove),
+                                                    ...visitItemNumbers.slice(indexToRemove + 1)
+                                                ];
                                                 
-                                                if (error) throw error;
-                                                
-                                                // Update local state
-                                                setVisits(prev => prev.map(v => 
-                                                    v.id === visit.id ? { ...v, item_id: updatedItemIds } : v
-                                                ));
-                                            } catch (error) {
-                                                console.error('Error removing item:', error);
+                                                try {
+                                                    const { error } = await supabase
+                                                        .from('visits')
+                                                        .update({ item_id: updatedItemNumbers }) // Send item_numbers (strings)
+                                                        .eq('id', visit.id);
+                                                    if (error) throw error;
+                                                    setVisits(prev => prev.map(v =>
+                                                        v.id === visit.id ? { ...v, item_id: updatedItemNumbers } : v
+                                                    ));
+                                                } catch (error) {
+                                                    console.error('Error removing item:', error);
+                                                }
                                             }
                                         }}
                                     >
@@ -305,139 +325,148 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                     </div>
                 );
             },
-            // Custom handler for editing the items
             customEditHandler: async (visit: Visit, value: string, supabase: any) => {
-                // Parse the selected item IDs from the multiselect value
-                const selectedItemIds = value.split(',').filter(id => id.trim() !== '');
-                
-                // Update the database
+                // value is a comma-separated string of item_numbers
+                const selectedItemNumbers = value.split(',').filter(num => num.trim() !== '');
+
                 const { error } = await supabase
                     .from('visits')
-                    .update({ item_id: selectedItemIds })
+                    .update({ item_id: selectedItemNumbers }) // Store item_numbers (strings)
                     .eq('id', visit.id);
-                
+
                 if (error) throw error;
-                
-                // Return the updated data to update the local state
+
                 return {
                     ...visit,
-                    item_id: selectedItemIds
+                    item_id: selectedItemNumbers
                 };
             },
-            // Custom editor component for item selection
             customEditor: (props: {
-                value: string;
+                value: string; // Comma-separated string of item_numbers
                 onChange: (value: string) => void;
                 onBlur: () => void;
-                visit: Visit;
+                visit: Visit; // visit.item_id is string[] of item_numbers
             }) => {
-                const visitItemIds = (props.visit.item_id || []) as string[];
-                const [itemNumber, setItemNumber] = useState('');
-                
-                // Handle adding an item by item number
-                const handleAddItemByNumber = () => {
-                    if (!itemNumber.trim()) return;
-                    
-                    // Find the item with the matching item_number
-                    const foundItem = items.find(item => 
-                        item.item_number.toLowerCase() === itemNumber.trim().toLowerCase()
+                const initialItemNumbers = useMemo(() => {
+                    return props.value ? props.value.split(',').filter(num => num.trim() !== '') : [];
+                }, [props.value]);
+
+                const [currentItemNumbers, setCurrentItemNumbers] = useState<string[]>(initialItemNumbers);
+                const [itemNumberInput, setItemNumberInput] = useState('');
+
+                useEffect(() => {
+                    // Sync with props.value if it changes externally, but avoid infinite loops
+                    const newNumbersFromProps = props.value ? props.value.split(',').filter(num => num.trim() !== '') : [];
+                    if (JSON.stringify(newNumbersFromProps) !== JSON.stringify(currentItemNumbers)) {
+                        setCurrentItemNumbers(newNumbersFromProps);
+                    }
+                }, [props.value]); // Removed currentItemNumbers from dependency array to prevent potential loops if parent re-renders often
+
+                const updateParentState = (newNumbers: string[]) => {
+                    setCurrentItemNumbers(newNumbers);
+                    props.onChange(newNumbers.join(','));
+                };
+
+                const handleAddItemByInput = () => {
+                    if (!itemNumberInput.trim()) return;
+                    const inputNumStr = itemNumberInput.trim();
+
+                    const foundItem = items.find(item =>
+                        String(item.item_number).toLowerCase() === inputNumStr.toLowerCase()
                     );
-                    
+
                     if (foundItem) {
-                        // Only add if not already in the list
-                        if (!visitItemIds.includes(foundItem.id)) {
-                            const newItemIds = [...visitItemIds, foundItem.id];
-                            props.onChange(newItemIds.join(','));
+                        const foundItemNumStr = String(foundItem.item_number);
+                        if (!currentItemNumbers.includes(foundItemNumStr)) {
+                            updateParentState([...currentItemNumbers, foundItemNumStr]);
                         }
-                        // Reset the input field
-                        setItemNumber('');
+                        setItemNumberInput('');
                     } else {
-                        // Could show an error message here
-                        alert('Item number not found');
+                        alert(`Item number "${inputNumStr}" not found.`);
                     }
                 };
-                
-                // Handle selection of a new item from dropdown (keeping this as a fallback)
-                const handleItemSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-                    const selectedItemId = e.target.value;
-                    if (!selectedItemId) return;
-                    
-                    // Only add if not already in the list
-                    if (!visitItemIds.includes(selectedItemId)) {
-                        const newItemIds = [...visitItemIds, selectedItemId];
-                        props.onChange(newItemIds.join(','));
+
+                const handleItemSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+                    const selectedNumStr = e.target.value;
+                    if (!selectedNumStr) return;
+
+                    if (!currentItemNumbers.includes(selectedNumStr)) {
+                        updateParentState([...currentItemNumbers, selectedNumStr]);
                     }
+                    e.target.value = ''; // Reset select to placeholder
+                };
+
+                const handleRemoveItem = (itemNumToRemoveStr: string) => {
+                    // Find the index of the first occurrence of the item to remove
+                    const indexToRemove = currentItemNumbers.findIndex(num => num === itemNumToRemoveStr);
                     
-                    // Reset the select to the placeholder
-                    e.target.value = '';
+                    // Only proceed if the item was found
+                    if (indexToRemove !== -1) {
+                        // Create a new array without the first occurrence of the item
+                        const updatedItemNumbers = [
+                            ...currentItemNumbers.slice(0, indexToRemove),
+                            ...currentItemNumbers.slice(indexToRemove + 1)
+                        ];
+                        updateParentState(updatedItemNumbers);
+                    }
                 };
-                
-                // Handle removing an item
-                const handleRemoveItem = (itemIdToRemove: string) => {
-                    const newItemIds = visitItemIds.filter(id => id !== itemIdToRemove);
-                    props.onChange(newItemIds.join(','));
-                };
-                
-                // Handle key press in the item number input
+
                 const handleKeyPress = (e: React.KeyboardEvent) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        handleAddItemByNumber();
+                        handleAddItemByInput();
                     }
                 };
-                
+
                 return (
                     <div className="flex flex-col gap-2">
-                        {/* Input to enter item number directly */}
                         <div className="flex gap-2">
                             <input
                                 type="text"
                                 className="input input-bordered w-full"
                                 placeholder="Enter item number..."
-                                value={itemNumber}
-                                onChange={(e) => setItemNumber(e.target.value)}
+                                value={itemNumberInput}
+                                onChange={(e) => setItemNumberInput(e.target.value)}
                                 onKeyPress={handleKeyPress}
                             />
                             <button
                                 className="btn btn-primary"
-                                onClick={handleAddItemByNumber}
+                                onClick={handleAddItemByInput}
                                 type="button"
                             >
                                 Add
                             </button>
                         </div>
-                        
-                        {/* Dropdown to select items (as a fallback) */}
-                        <select 
-                            className="select select-bordered w-full" 
-                            onChange={handleItemSelect}
-                            defaultValue=""
+
+                        <select
+                            className="select select-bordered w-full"
+                            onChange={handleItemSelectChange}
+                            defaultValue="" 
                         >
                             <option value="" disabled>Or select an item from list...</option>
                             {items.map(item => (
-                                <option 
+                                <option
                                     key={item.id} 
-                                    value={item.id}
-                                    disabled={visitItemIds.includes(item.id)}
+                                    value={String(item.item_number)} 
+                                    disabled={currentItemNumbers.includes(String(item.item_number))}
                                 >
                                     {item.item_number} - {item.item_name}
                                 </option>
                             ))}
                         </select>
-                        
-                        {/* Display currently selected items with remove buttons */}
+
                         <div className="flex flex-col gap-1 mt-2">
-                            {visitItemIds.length > 0 ? (
-                                visitItemIds.map(itemId => {
-                                    const item = items.find(i => i.id === itemId);
+                            {currentItemNumbers.length > 0 ? (
+                                currentItemNumbers.map(itemNumStr => {
+                                    const item = items.find(i => String(i.item_number) === itemNumStr);
                                     return (
-                                        <div key={itemId} className="flex items-center gap-1">
+                                        <div key={itemNumStr} className="flex items-center gap-1">
                                             <div className="text-sm badge badge-outline">
-                                                {item ? `${item.item_number} - ${item.item_name}` : 'Unknown'}
+                                                {item ? `${item.item_number} - ${item.item_name}` : `Item ${itemNumStr} (Data Missing)`}
                                             </div>
-                                            <button 
+                                            <button
                                                 className="btn btn-xs btn-ghost text-error"
-                                                onClick={() => handleRemoveItem(itemId)}
+                                                onClick={() => handleRemoveItem(itemNumStr)}
                                                 type="button"
                                             >
                                                 ×
@@ -449,20 +478,18 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                                 <span className="text-neutral-400">No items selected</span>
                             )}
                         </div>
-                        
-                        {/* Hidden input to store the actual value */}
-                        <input 
-                            type="hidden" 
-                            value={visitItemIds.join(',')} 
-                            onBlur={props.onBlur}
+
+                        <input
+                            type="hidden"
+                            value={currentItemNumbers.join(',')}
+                            onBlur={props.onBlur} 
                         />
                     </div>
                 );
             },
-            // When editing starts, prepare the value for the custom editor
             getEditValue: (visit: Visit) => {
-                const visitItems = (visit.item_id || []) as string[];
-                return visitItems.join(',');
+                const visitItemNumbers = (visit.item_id || []) as string[];
+                return visitItemNumbers.join(',');
             }
         },
         {
@@ -470,6 +497,26 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
             header: 'Notes',
             editable: true,
             filterable: true
+        },
+        {
+            key: 'total_price',
+            header: 'Total Price',
+            editable: false,
+            filterable: false,
+            render: (visit: Visit) => {
+                // Calculate total price for this visit
+                const visitItemNumbers = (visit.item_id || []) as string[];
+                const totalPrice = visitItemNumbers.reduce((sum, itemNumberStr) => {
+                    const item = items.find(i => String(i.item_number) === itemNumberStr);
+                    return sum + (item?.value || 0);
+                }, 0);
+                
+                return (
+                    <div className="font-semibold text-right">
+                        {totalPrice > 0 ? `Rs.${totalPrice.toFixed(2)}` : <span className="text-neutral-400">Rs.0.00</span>}
+                    </div>
+                );
+            }
         },
         {
             key: 'navigation',
@@ -731,6 +778,18 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
         })
     );
     
+    // Calculate grand total for all filtered visits
+    const calculateGrandTotal = (filteredVisits: Visit[]) => {
+        return filteredVisits.reduce((total, visit) => {
+            const visitItemNumbers = (visit.item_id || []) as string[];
+            const visitTotal = visitItemNumbers.reduce((sum, itemNumberStr) => {
+                const item = items.find(i => String(i.item_number) === itemNumberStr);
+                return sum + (item?.value || 0);
+            }, 0);
+            return total + visitTotal;
+        }, 0);
+    };
+
     return (
         <>
             <DndContext
@@ -762,6 +821,16 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                         inputRef={inputRef}
                         dateField="date"
                         isDraggable={true}
+                        renderSummary={(filteredData) => (
+                            <div className="mt-4 p-3 bg-white rounded-lg shadow-sm border border-gray-100">
+                                <div className="flex justify-between items-center">
+                                    <span className="font-medium text-gray-700">Grand Total:</span>
+                                    <span className="font-bold text-lg text-gray-900">
+                                        Rs.{calculateGrandTotal(filteredData as Visit[]).toFixed(2)}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     />
                 </SortableContext>
             </DndContext>

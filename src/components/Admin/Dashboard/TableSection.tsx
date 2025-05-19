@@ -77,6 +77,7 @@ interface TableSectionProps {
   inputRef: React.RefObject<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
   dateField?: string; // Field name for date filtering
   isDraggable?: boolean; // Whether rows can be dragged for reordering
+  renderSummary?: (filteredData: any[]) => React.ReactNode; // Function to render summary section below the table
 }
 
 const TableSection: React.FC<TableSectionProps> = ({
@@ -98,7 +99,8 @@ const TableSection: React.FC<TableSectionProps> = ({
   setIsLoadingInline,
   inputRef,
   dateField,
-  isDraggable = false
+  isDraggable = false,
+  renderSummary
 }) => {
   // State for filtering and search
   const [searchTerm, setSearchTerm] = useState('');
@@ -871,6 +873,9 @@ const TableSection: React.FC<TableSectionProps> = ({
               </tbody>
             </table>
           </div>
+          
+          {/* Summary Section */}
+          {renderSummary && filteredData.length > 0 && renderSummary(filteredData)}
         </>
       )}
     </section>

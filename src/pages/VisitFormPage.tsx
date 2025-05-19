@@ -150,7 +150,7 @@ const VisitFormPage: React.FC = () => {
     }, []);
 
     const itemOptions: SelectOption[] = items.map(item => ({
-        value: item.id,
+        value: item.item_number,
         label: `${item.item_name} (${item.item_number}) - Rs.${item.value ?? 0}`
     }));
 
