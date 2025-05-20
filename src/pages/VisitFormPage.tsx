@@ -117,13 +117,13 @@ const VisitFormPage: React.FC = () => {
 
                 if (error) {
                     console.error('Error fetching routes:', error);
-                    setFormError('Failed to load routes');
+                    setFormError('මාර්ග පූරණය කිරීමට අසමත් විය');
                 } else {
                     setRoutes(data || []);
                 }
             } catch (error) {
                 console.error('Error fetching routes:', error);
-                setFormError('An error occurred while loading routes');
+                setFormError('මාර්ග පූරණය කිරීමේදී දෝෂයක් ඇති විය');
             }
         };
 
@@ -135,13 +135,13 @@ const VisitFormPage: React.FC = () => {
 
                 if (error) {
                     console.error('Error fetching items:', error);
-                    setFormError('Failed to load items');
+                    setFormError('භාණ්ඩ පූරණය කිරීමට අසමත් විය');
                 } else {
                     setItems(data || []);
                 }
             } catch (error) {
                 console.error('Error fetching items:', error);
-                setFormError('An error occurred while loading items');
+                setFormError('භාණ්ඩ පූරණය කිරීමේදී දෝෂයක් ඇති විය');
             }
         };
 
@@ -165,7 +165,7 @@ const VisitFormPage: React.FC = () => {
             setCurrentItemToAdd(null);
             setFormError('');
         } else {
-            setFormError("Please select an item to add.");
+            setFormError("කරුණාකර එකතු කිරීමට භාණ්ඩයක් තෝරන්න.");
         }
     };
 
@@ -179,7 +179,7 @@ const VisitFormPage: React.FC = () => {
         setFormError('');
 
         if (!navigator.geolocation) {
-            setLocationError('Geolocation is not supported by your browser');
+            setLocationError('ඔබගේ බ්‍රවුසරය භූගෝලීය ස්ථානගත කිරීම සඳහා සහාය නොදක්වයි');
             setIsGettingLocation(false);
             return;
         }
@@ -193,11 +193,11 @@ const VisitFormPage: React.FC = () => {
                 setIsGettingLocation(false);
             },
             (error) => {
-                let errorMsg = 'Failed to get location';
+                let errorMsg = 'ස්ථානය ලබා ගැනීමට අසමත් විය';
                 switch (error.code) {
-                    case error.PERMISSION_DENIED: errorMsg = 'Location access denied. Please enable location services.'; break;
-                    case error.POSITION_UNAVAILABLE: errorMsg = 'Location information is unavailable.'; break;
-                    case error.TIMEOUT: errorMsg = 'Location request timed out.'; break;
+                    case error.PERMISSION_DENIED: errorMsg = 'ස්ථාන ප්‍රවේශය ප්‍රතික්ෂේප කර ඇත. කරුණාකර ස්ථාන සේවා සක්‍රීය කරන්න.'; break;
+                    case error.POSITION_UNAVAILABLE: errorMsg = 'ස්ථාන තොරතුරු නොමැත.'; break;
+                    case error.TIMEOUT: errorMsg = 'ස්ථාන ඉල්ලීම කල් ඉකුත් විය.'; break;
                 }
                 setLocationError(errorMsg);
                 setIsGettingLocation(false);
@@ -212,19 +212,19 @@ const VisitFormPage: React.FC = () => {
         setLocationError('');
 
         if (!location) {
-            setLocationError('Please get your current geo-coordinates first');
+            setLocationError('කරුණාකර පළමුව ඔබගේ වත්මන් භූගෝලීය ඛණ්ඩාංක ලබා ගන්න');
             return;
         }
         if (!address) {
-            setFormError('Please enter the address');
+            setFormError('කරුණාකර ලිපිනය ඇතුළත් කරන්න');
             return;
         }
         if (addedItems.length === 0) {
-            setFormError('Please add at least one item to the visit');
+            setFormError('කරුණාකර සංචාරයට අවම වශයෙන් එක් භාණ්ඩයක් වත් එකතු කරන්න');
             return;
         }
         if (!routeId) {
-            setFormError('Please select a route');
+            setFormError('කරුණාකර මාර්ගයක් තෝරන්න');
             return;
         }
 
@@ -262,7 +262,7 @@ const VisitFormPage: React.FC = () => {
 
             if (error) {
                 console.error('Error saving visit:', error);
-                setFormError(`Failed to save visit: ${error.message}`);
+                setFormError(`සංචාරය සුරැකීමට අසමත් විය: ${error.message}`);
                 throw error;
             }
 
@@ -294,7 +294,7 @@ const VisitFormPage: React.FC = () => {
         } catch (error: any) {
             if (!formError) {
                 console.error('Error in handleSubmit:', error.message);
-                setFormError('An unexpected error occurred while saving the visit.');
+                setFormError('සංචාරය සුරැකීමේදී අනපේක්ෂිත දෝෂයක් ඇති විය.');
             }
         } finally {
             setIsSubmitting(false);
@@ -307,18 +307,18 @@ const VisitFormPage: React.FC = () => {
                 <div className="bg-green-100 p-4 rounded-full mb-4">
                     <Check size={48} className="text-green-600" />
                 </div>
-                <h2 className="text-2xl font-bold mb-2 text-gray-800">Visit Recorded!</h2>
+                <h2 className="text-2xl font-bold mb-2 text-gray-800">සංචාරය වාර්තා කරන ලදී!</h2>
                 <p className="text-neutral-600 text-center mb-6">
-                    The visit has been successfully recorded.
+                    සංචාරය සාර්ථකව වාර්තා කර ඇත.
                 </p>
-                <p className="text-sm text-neutral-500">Redirecting to visits list...</p>
+                <p className="text-sm text-neutral-500">සංචාර ලැයිස්තුවට යොමු වෙමින්...</p>
             </div>
         );
     }
 
     return (
         <div className="max-w-xl mx-auto py-6 animate-fade-in">
-            <h1 className="text-2xl font-bold mb-6 text-gray-800">Record New Visit</h1>
+            <h1 className="text-2xl font-bold mb-6 text-gray-800">නව සංචාරයක් වාර්තා කරන්න</h1>
 
             {formError && (
                 <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-md">
@@ -328,11 +328,11 @@ const VisitFormPage: React.FC = () => {
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="card p-6 bg-white shadow rounded-lg">
-                    <h2 className="text-lg font-medium mb-4 text-gray-700">Visit Details</h2>
+                    <h2 className="text-lg font-medium mb-4 text-gray-700">සංචාර විස්තර</h2>
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="visitDate" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Visit Date
+                                සංචාර දිනය
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -351,7 +351,7 @@ const VisitFormPage: React.FC = () => {
 
                         <div>
                             <label htmlFor="buyerName" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Buyer Name
+                                ගනුදෙනුකරුගේ නම
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -372,7 +372,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Number One (was mobile_phone) */}
                         <div>
                             <label htmlFor="number_one" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Number 1
+                                අංක 1
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -394,7 +394,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Number Two (was land_phone) */}
                         <div>
                             <label htmlFor="number_two" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Number 2 (Optional)
+                                අංක 2 (විකල්ප)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -415,7 +415,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Number Three */}
                         <div>
                             <label htmlFor="number_three" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Number 3 (Optional)
+                                අංක 3 (විකල්ප)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -436,7 +436,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Number Four */}
                         <div>
                             <label htmlFor="number_four" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Number 4 (Optional)
+                                අංක 4 (විකල්ප)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -457,7 +457,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Bill Number */}
                         <div>
                             <label htmlFor="bill_number" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Bill Number (Optional)
+                                බිල්පත් අංකය (විකල්ප)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -477,7 +477,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Notes - Single instance of Notes field */}
                         <div>
                             <label htmlFor="notes" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Notes (Optional)
+                                සටහන් (විකල්ප)
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 pt-2 flex items-start pointer-events-none z-20">
@@ -508,7 +508,7 @@ const VisitFormPage: React.FC = () => {
                                         options={itemOptions}
                                         value={currentItemToAdd}
                                         onChange={(selectedOption) => setCurrentItemToAdd(selectedOption as SingleValue<SelectOption>)}
-                                        placeholder="Search and select item..."
+                                        placeholder="භාණ්ඩ සොයන්න සහ තෝරන්න..."
                                         styles={customStyles}
                                         isSearchable
                                         isClearable
@@ -523,7 +523,7 @@ const VisitFormPage: React.FC = () => {
                                     onClick={handleAddItem}
                                     disabled={!currentItemToAdd || isSubmitting}
                                     className="btn btn-secondary p-2 h-[42px]"
-                                    title="Add selected item to list"
+                                    title="තෝරාගත් භාණ්ඩය ලැයිස්තුවට එකතු කරන්න"
                                 >
                                     <Plus size={20} />
                                 </button>
@@ -544,7 +544,7 @@ const VisitFormPage: React.FC = () => {
                                                 onClick={() => handleRemoveItem(index)}
                                                 disabled={isSubmitting}
                                                 className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100"
-                                                title="Remove this item"
+                                                title="මෙම භාණ්ඩය ඉවත් කරන්න"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -557,7 +557,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Route Selector */}
                         <div>
                             <label htmlFor="routeId" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Route
+                                මාර්ගය
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-20">
@@ -568,7 +568,7 @@ const VisitFormPage: React.FC = () => {
                                     value={routeId}
                                     onChange={(selected) => setRouteId(selected as SingleValue<SelectOption>)}
                                     styles={customStyles}
-                                    placeholder="Select route..."
+                                    placeholder="මාර්ගය තෝරන්න..."
                                     filterOption={customFilter}
                                     formatOptionLabel={formatOptionLabel}
                                     className="react-select-container"
@@ -580,7 +580,7 @@ const VisitFormPage: React.FC = () => {
                         {/* Visit Type */}
                         <div>
                             <label htmlFor="visitType" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Visit Type
+                                සංචාර වර්ගය
                             </label>
                             <div className="relative">
                                 <select
@@ -605,11 +605,11 @@ const VisitFormPage: React.FC = () => {
 
                 {/* Location Card */}
                 <div className="card p-6 bg-white shadow rounded-lg">
-                    <h2 className="text-lg font-medium mb-4 text-gray-700">Location</h2>
+                    <h2 className="text-lg font-medium mb-4 text-gray-700">ස්ථානය</h2>
                     <div className="space-y-4">
                         <div>
                             <label htmlFor="address" className="block text-sm font-medium text-neutral-700 mb-1">
-                                Address
+                                ලිපිනය
                             </label>
                             <div className="relative">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
@@ -637,17 +637,17 @@ const VisitFormPage: React.FC = () => {
                                 {isGettingLocation ? (
                                     <>
                                         <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-current mr-2"></div>
-                                        Getting coordinates...
+                                        ඛණ්ඩාංක ලබා ගනිමින්...
                                     </>
                                 ) : location ? (
                                     <>
                                         <Check size={18} className="mr-2 text-green-600" />
-                                        Geo-Coordinates Captured (Update?)
+                                        භූගෝලීය ඛණ්ඩාංක ලබාගත් (යාවත්කාලීන කරන්නද?)
                                     </>
                                 ) : (
                                     <>
                                         <MapPin size={18} className="mr-2" />
-                                        Get Current Geo-Coordinates
+                                        වත්මන් භූගෝලීය ඛණ්ඩාංක ලබාගන්න
                                     </>
                                 )}
                             </button>
@@ -659,7 +659,7 @@ const VisitFormPage: React.FC = () => {
                             {location && (
                                 <div className="mt-3 p-3 bg-green-50 rounded-md border border-green-200">
                                     <p className="text-sm font-medium text-green-700 flex items-center">
-                                        <Check size={16} className="mr-1.5" /> Geo-coordinates captured:
+                                        <Check size={16} className="mr-1.5" /> භූගෝලීය ඛණ්ඩාංක ලබාගත්:
                                     </p>
                                     <p className="text-xs text-neutral-600 mt-1 pl-5">
                                         Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
@@ -667,7 +667,7 @@ const VisitFormPage: React.FC = () => {
                                 </div>
                             )}
                              {!location && address && (
-                                <p className="text-xs text-neutral-500 mt-2 pl-1">Remember to capture geo-coordinates.</p>
+                                <p className="text-xs text-neutral-500 mt-2 pl-1">භූගෝලීය ඛණ්ඩාංක ලබා ගැනීමට මතක තබා ගන්න.</p>
                              )}
                         </div>
                     </div>
@@ -680,7 +680,7 @@ const VisitFormPage: React.FC = () => {
                         className="btn btn-outline"
                         disabled={isSubmitting}
                     >
-                        Cancel
+                        අවලංගු කරන්න
                     </button>
                     <button
                         type="submit"
@@ -698,10 +698,10 @@ const VisitFormPage: React.FC = () => {
                         {isSubmitting ? (
                             <>
                                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
-                                Saving Visit...
+                                සංචාරය සුරකිමින්...
                             </>
                         ) : (
-                            'Save Visit'
+                            'සංචාරය සුරකින්න'
                         )}
                     </button>
                 </div>

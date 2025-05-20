@@ -114,7 +114,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
     if (!isOpen || !visit) return null;
 
     // --- Form Handlers ---
-    const handleAddItem = () => { /* ... */ if (currentItemToAdd) { setAddedItems(prev => [...prev, currentItemToAdd]); setCurrentItemToAdd(null); setModalFormError(''); } else { setModalFormError("Please select an item to add."); } };
+    const handleAddItem = () => { /* ... */ if (currentItemToAdd) { setAddedItems(prev => [...prev, currentItemToAdd]); setCurrentItemToAdd(null); setModalFormError(''); } else { setModalFormError("කරුණාකර එකතු කිරීමට භාණ්ඩයක් තෝරන්න."); } };
     const handleRemoveItem = (indexToRemove: number) => { /* ... */ setAddedItems(prev => prev.filter((_, index) => index !== indexToRemove)); };
 
     // --- Location Capture Handler ---
@@ -124,7 +124,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
         setModalFormError(''); // Clear form errors when capturing location
 
         if (!navigator.geolocation) {
-            setLocationCaptureError('Geolocation is not supported by your browser');
+            setLocationCaptureError('ඔබගේ බ්‍රවුසරය භූගෝලීය ස්ථානගත කිරීම සඳහා සහාය නොදක්වයි');
             setIsCapturingLocation(false);
             return;
         }
@@ -138,11 +138,11 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                 setIsCapturingLocation(false);
             },
             (error) => {
-                let errorMsg = 'Failed to get location';
+                let errorMsg = 'ස්ථානය ලබා ගැනීමට අසමත් විය';
                 switch (error.code) {
-                    case error.PERMISSION_DENIED: errorMsg = 'Location access denied.'; break;
-                    case error.POSITION_UNAVAILABLE: errorMsg = 'Location info unavailable.'; break;
-                    case error.TIMEOUT: errorMsg = 'Location request timed out.'; break;
+                    case error.PERMISSION_DENIED: errorMsg = 'ස්ථාන ප්‍රවේශය ප්‍රතික්ෂේප කර ඇත.'; break;
+                    case error.POSITION_UNAVAILABLE: errorMsg = 'ස්ථාන තොරතුරු නොමැත.'; break;
+                    case error.TIMEOUT: errorMsg = 'ස්ථාන ඉල්ලීම කල් ඉකුත් විය.'; break;
                 }
                 setLocationCaptureError(errorMsg);
                 setIsCapturingLocation(false);
@@ -158,9 +158,9 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
         setLocationCaptureError(''); // Clear location error on submit attempt
 
         // --- Validation ---
-        if (addedItems.length === 0) { setModalFormError('Please add at least one item.'); return; }
-        if (!routeId) { setModalFormError('Please select a route.'); return; }
-        if (!visitDate) { setModalFormError('Please select a visit date.'); return; }
+        if (addedItems.length === 0) { setModalFormError('කරුණාකර අවම වශයෙන් එක් භාණ්ඩයක් වත් එකතු කරන්න.'); return; }
+        if (!routeId) { setModalFormError('කරුණාකර මාර්ගයක් තෝරන්න.'); return; }
+        if (!visitDate) { setModalFormError('කරුණාකර සංචාර දිනයක් තෝරන්න.'); return; }
         // No validation needed for location capture, it's optional
 
         const updatedVisitData: Partial<Visit> & { location?: LocationData | null } = {
@@ -197,7 +197,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
             <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 {/* Header */}
                 <div className="flex justify-between items-center p-4 border-b sticky top-0 bg-white z-10 flex-shrink-0">
-                    <h2 className="text-xl font-semibold text-gray-800">Edit Visit Details</h2>
+                    <h2 className="text-xl font-semibold text-gray-800">සංචාර විස්තර සංස්කරණය කරන්න</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600" disabled={isLoading || isCapturingLocation}> <X size={24} /> </button>
                 </div>
 
@@ -211,20 +211,26 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Status */}
                         <div>
-                            <label htmlFor="edit_status" className="lbl">Status</label>
+                            <label htmlFor="edit_status" className="lbl">තත්ත්වය</label>
                             <select id="edit_status" name="status" value={status} onChange={(e) => setStatus(e.target.value)} className="input" required disabled={isLoading || isCapturingLocation}>
-                                <option value="Pending">Pending</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Cancelled">Cancelled</option>
-<option value="Return">Return</option>
+                                <option value="Pending">අපේක්ෂිත</option>
+                                <option value="Completed">සම්පූර්ණයි</option>
+                                <option value="Cancelled">අවලංගු කළා</option>
+<option value="Return">ආපසු</option>
                             </select>
                         </div>
                          {/* Visit Type */}
                         <div>
-                            <label htmlFor="edit_visitType" className="lbl">Visit Type</label>
+                            <label htmlFor="edit_visitType" className="lbl">සංචාර වර්ගය</label>
                              <div className="relative">
                                 <select id="edit_visitType" value={visitType} onChange={(e) => setVisitType(e.target.value as Visit['type'])} className="input pr-10 appearance-none" required disabled={isLoading || isCapturingLocation}>
-                                    {deliveryTypes.map(type => <option key={type} value={type}>{type}</option>)}
+                                    {deliveryTypes.map(type => {
+                                        let displayName = type;
+                                        if (type === 'Sample') displayName = 'සාම්පල';
+                                        else if (type === 'Sittu') displayName = 'සිට්ටු';
+                                        else if (type === 'Over') displayName = 'ඕවර්';
+                                        return <option key={type} value={type}>{displayName}</option>;
+                                    })}
                                 </select>
                                 <div className="input-icon right-0 pr-3"><ChevronDown size={18} /></div>
                              </div>
@@ -236,7 +242,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {/* Visit Date */}
                         <div>
-                            <label htmlFor="edit_visitDate" className="lbl">Visit Date</label>
+                            <label htmlFor="edit_visitDate" className="lbl">සංචාර දිනය</label>
                              <div className="relative">
                                 <div className="input-icon left-0 pl-3"><Calendar size={18} /></div>
                                 <input type="date" id="edit_visitDate" value={visitDate} onChange={(e) => setVisitDate(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} />
@@ -244,7 +250,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                         </div>
                         {/* Buyer Name */}
                         <div>
-                            <label htmlFor="edit_buyerName" className="lbl">Buyer Name</label>
+                            <label htmlFor="edit_buyerName" className="lbl">ගනුදෙනුකරුගේ නම</label>
                              <div className="relative">
                                 <div className="input-icon left-0 pl-3"><User size={18} /></div>
                                 <input type="text" id="edit_buyerName" value={buyerName} onChange={(e) => setBuyerName(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} />
@@ -253,17 +259,17 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                     </div>
 
                      {/* Address */}
-                     <div> <label htmlFor="edit_address" className="lbl">Address</label> <div className="relative"> <div className="input-icon left-0 pl-3"><MapPin size={18} /></div> <input type="text" id="edit_address" value={address} onChange={(e) => setAddress(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} /> </div> </div>
+                     <div> <label htmlFor="edit_address" className="lbl">ලිපිනය</label> <div className="relative"> <div className="input-icon left-0 pl-3"><MapPin size={18} /></div> <input type="text" id="edit_address" value={address} onChange={(e) => setAddress(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} /> </div> </div>
 
                      {/* Phone Numbers */}
                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div> <label htmlFor="edit_number_one" className="lbl">Number 1</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_one" value={numberOne} onChange={(e) => setNumberOne(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} pattern="[0-9]{10,15}" /> </div> </div>
-                        <div> <label htmlFor="edit_number_two" className="lbl">Number 2 (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_two" value={numberTwo} onChange={(e) => setNumberTwo(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
+                        <div> <label htmlFor="edit_number_one" className="lbl">අංක 1</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_one" value={numberOne} onChange={(e) => setNumberOne(e.target.value)} className="input pl-10" required disabled={isLoading || isCapturingLocation} pattern="[0-9]{10,15}" /> </div> </div>
+                        <div> <label htmlFor="edit_number_two" className="lbl">අංක 2 (විකල්ප)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_two" value={numberTwo} onChange={(e) => setNumberTwo(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
                     </div>
                     
                     {/* Bill Number */}
                     <div>
-                        <label htmlFor="edit_bill_number" className="lbl">Bill Number</label>
+                        <label htmlFor="edit_bill_number" className="lbl">බිල්පත් අංකය</label>
                         <div className="relative">
                             <div className="input-icon left-0 pl-3"><FileText size={18} /></div>
                             <input 
@@ -279,35 +285,35 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                     
                     {/* Additional Phone Numbers */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div> <label htmlFor="edit_number_three" className="lbl">Number 3 (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_three" value={numberThree} onChange={(e) => setNumberThree(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
-                        <div> <label htmlFor="edit_number_four" className="lbl">Number 4 (Optional)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_four" value={numberFour} onChange={(e) => setNumberFour(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
+                        <div> <label htmlFor="edit_number_three" className="lbl">අංක 3 (විකල්ප)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_three" value={numberThree} onChange={(e) => setNumberThree(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
+                        <div> <label htmlFor="edit_number_four" className="lbl">අංක 4 (විකල්ප)</label> <div className="relative"> <div className="input-icon left-0 pl-3"><Phone size={18} /></div> <input type="tel" id="edit_number_four" value={numberFour} onChange={(e) => setNumberFour(e.target.value)} className="input pl-10" disabled={isLoading || isCapturingLocation} pattern="[0-9]{9,15}" /> </div> </div>
                     </div>
 
                      {/* Item Selection */}
                      <div> {/* ... Item selection area JSX (same as before) ... */}
-                         <label htmlFor="itemToAdd" className="lbl">Items</label>
+                         <label htmlFor="itemToAdd" className="lbl">භාණ්ඩ</label>
                          <div className="flex items-center space-x-2">
-                             <div className="relative flex-grow"> <div className="input-icon left-0 pl-3 z-10"><Package size={18} /></div> <Select inputId="itemToAdd" options={itemOptions} value={currentItemToAdd} onChange={(selected) => setCurrentItemToAdd(selected as SingleValue<SelectOption>)} placeholder="Search and select item..." styles={customSelectStyles} isSearchable isClearable filterOption={customFilter} className="react-select-container" classNamePrefix="react-select" isDisabled={isLoading || isCapturingLocation} /> </div>
-                             <button type="button" onClick={handleAddItem} disabled={!currentItemToAdd || isLoading || isCapturingLocation} className="btn btn-secondary p-2 h-[42px] flex-shrink-0" title="Add selected item"><Plus size={20} /></button>
+                             <div className="relative flex-grow"> <div className="input-icon left-0 pl-3 z-10"><Package size={18} /></div> <Select inputId="itemToAdd" options={itemOptions} value={currentItemToAdd} onChange={(selected) => setCurrentItemToAdd(selected as SingleValue<SelectOption>)} placeholder="භාණ්ඩ සොයන්න සහ තෝරන්න..." styles={customSelectStyles} isSearchable isClearable filterOption={customFilter} className="react-select-container" classNamePrefix="react-select" isDisabled={isLoading || isCapturingLocation} /> </div>
+                             <button type="button" onClick={handleAddItem} disabled={!currentItemToAdd || isLoading || isCapturingLocation} className="btn btn-secondary p-2 h-[42px] flex-shrink-0" title="තෝරාගත් භාණ්ඩය එකතු කරන්න"><Plus size={20} /></button>
                          </div>
-                         {addedItems.length > 0 && ( <div className="mt-2 space-y-1 border border-gray-200 rounded-md p-2 bg-gray-50 max-h-28 overflow-y-auto"> {addedItems.map((item, index) => ( <div key={`${item.value}-${index}`} className="flex justify-between items-center py-0.5 px-1.5 text-sm text-gray-800 hover:bg-gray-100 rounded"> <span>{item.label}</span> <button type="button" onClick={() => handleRemoveItem(index)} disabled={isLoading || isCapturingLocation} className="modal-remove-btn" title="Remove"><Trash2 size={14} /></button> </div> ))} </div> )}
+                         {addedItems.length > 0 && ( <div className="mt-2 space-y-1 border border-gray-200 rounded-md p-2 bg-gray-50 max-h-28 overflow-y-auto"> {addedItems.map((item, index) => ( <div key={`${item.value}-${index}`} className="flex justify-between items-center py-0.5 px-1.5 text-sm text-gray-800 hover:bg-gray-100 rounded"> <span>{item.label}</span> <button type="button" onClick={() => handleRemoveItem(index)} disabled={isLoading || isCapturingLocation} className="modal-remove-btn" title="ඉවත් කරන්න"><Trash2 size={14} /></button> </div> ))} </div> )}
                     </div>
 
                      {/* Route */}
                      <div> {/* ... Route selection area JSX (same as before) ... */}
-                         <label htmlFor="edit_routeId" className="lbl">Route</label>
-                         <div className="relative"> <div className="input-icon left-0 pl-3 z-10"><Route size={18} /></div> <Select inputId="edit_routeId" options={routeOptions} value={routeOptions.find(option => option.value === routeId)} onChange={(selected) => setRouteId(selected?.value || null)} placeholder="Select Route" styles={customSelectStyles} isSearchable isClearable filterOption={customFilter} className="react-select-container" classNamePrefix="react-select" isDisabled={isLoading || isCapturingLocation} required /> </div>
+                         <label htmlFor="edit_routeId" className="lbl">මාර්ගය</label>
+                         <div className="relative"> <div className="input-icon left-0 pl-3 z-10"><Route size={18} /></div> <Select inputId="edit_routeId" options={routeOptions} value={routeOptions.find(option => option.value === routeId)} onChange={(selected) => setRouteId(selected?.value || null)} placeholder="මාර්ගය තෝරන්න" styles={customSelectStyles} isSearchable isClearable filterOption={customFilter} className="react-select-container" classNamePrefix="react-select" isDisabled={isLoading || isCapturingLocation} required /> </div>
                     </div>
 
                     {/* Notes */}
                     <div> {/* ... Notes textarea JSX (same as before) ... */}
-                         <label htmlFor="edit_notes" className="lbl">Notes (Optional)</label>
+                         <label htmlFor="edit_notes" className="lbl">සටහන් (විකල්ප)</label>
                          <div className="relative"> <div className="absolute top-3 left-3 pointer-events-none z-10"><FileText size={18} className="text-gray-400"/></div> <textarea id="edit_notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="input pl-10 min-h-[70px]" rows={3} disabled={isLoading || isCapturingLocation}></textarea> </div>
                     </div>
 
                     {/* --- Location Capture Section --- */}
                     <div className="pt-2 space-y-2">
-                         <label className="lbl">Geo-Coordinates</label>
+                         <label className="lbl">භූගෝලීය ඛණ්ඩාංක</label>
                          {/* Display Current/Captured Location */}
                         <div className="flex items-center text-sm p-2 rounded border bg-gray-50 text-gray-500">
                             <MapPin size={16} className="mr-2 flex-shrink-0" />
@@ -322,11 +328,11 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                             className="btn btn-secondary btn-sm w-full flex items-center justify-center"
                          >
                              {isCapturingLocation ? (
-                                <> <Loader size={16} className="animate-spin mr-2" /> Capturing... </>
+                                <> <Loader size={16} className="animate-spin mr-2" /> ලබා ගනිමින්... </>
                              ) : capturedLocation ? (
-                                <> <MapPin size={16} className="mr-2" /> Re-capture Coordinates </>
+                                <> <MapPin size={16} className="mr-2" /> නැවත ඛණ්ඩාංක ලබා ගන්න </>
                              ) : (
-                                <> <MapPin size={16} className="mr-2" /> Capture Current Geo-Coordinates </>
+                                <> <MapPin size={16} className="mr-2" /> වත්මන් භූගෝලීය ඛණ්ඩාංක ලබා ගන්න </>
                              )}
                          </button>
                     </div>
@@ -336,11 +342,11 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
 
                 {/* Footer */}
                 <div className="flex justify-end gap-3 p-4 border-t bg-gray-50 flex-shrink-0">
-                    <button type="button" onClick={onClose} className="btn btn-outline" disabled={isLoading || isCapturingLocation}>Cancel</button>
+                    <button type="button" onClick={onClose} className="btn btn-outline" disabled={isLoading || isCapturingLocation}>අවලංගු කරන්න</button>
                     <button type="submit" className="btn btn-primary" disabled={isLoading || isCapturingLocation} onClick={handleModalSubmit}>
                         {isLoading ? (
-                            <> <div className="spinner-xs mr-2"></div> Saving... </>
-                        ) : ( 'Save Changes' )}
+                            <> <div className="spinner-xs mr-2"></div> සුරකිමින්... </>
+                        ) : ( 'වෙනස්කම් සුරකින්න' )}
                     </button>
                 </div>
 
@@ -553,14 +559,14 @@ const VisitListPage: React.FC = () => {
             handleCloseEditModal();
         } catch (error: any) {
             console.error('Error updating visit:', error);
-            alert(`Failed to update visit: ${error.message}`);
+            alert(`සංචාරය යාවත්කාලීන කිරීමට අසමත් විය: ${error.message}`);
         } finally {
             setIsSaving(false);
         }
     };
 
      const deleteVisit = async (visitId: string) => {
-        if (window.confirm('Are you sure you want to delete this visit?')) {
+        if (window.confirm('ඔබට මෙම සංචාරය මකා දැමීමට අවශ්‍ය බව විශ්වාසද?')) {
             const previousVisits = [...visits];
             setVisits(visits.filter(visit => visit.id !== visitId)); // Optimistic UI
             try {
@@ -569,7 +575,7 @@ const VisitListPage: React.FC = () => {
             } catch (error: any) {
                 console.error('Error deleting visit:', error);
                 setVisits(previousVisits); // Rollback
-                alert(`Failed to delete visit: ${error.message}`);
+                alert(`සංචාරය මකා දැමීමට අසමත් විය: ${error.message}`);
             }
         }
     };
@@ -579,41 +585,47 @@ const VisitListPage: React.FC = () => {
     return (
         <div className="space-y-4 sm:space-y-6 pt-4 pb-16 animate-fade-in max-w-5xl mx-auto px-2 sm:px-4">
             {/* Header */}
-             <header className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 mb-4"> <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Visits</h1> <Link to="/visits/new" className="btn btn-primary w-full sm:w-auto"> <Plus size={18} className="mr-1.5" /> New Visit </Link> </header>
+             <header className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 mb-4"> <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">සංචාර</h1> <Link to="/visits/new" className="btn btn-primary w-full sm:w-auto"> <Plus size={18} className="mr-1.5" /> නව සංචාරයක් </Link> </header>
 
             {/* Search Bar */}
-             <div className="relative"> <input type="text" placeholder="Search visits..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input pl-10 w-full" /> <Search size={18} className="input-icon left-3" /> {searchTerm && (<button onClick={clearSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"><XSquare size={18} /></button>)} </div>
+             <div className="relative"> <input type="text" placeholder="සංචාර සොයන්න..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input pl-10 w-full" /> <Search size={18} className="input-icon left-3" /> {searchTerm && (<button onClick={clearSearch} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"><XSquare size={18} /></button>)} </div>
 
             {/* Filters */}
              <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm border border-gray-200">
-                 <div className="flex justify-between items-center mb-3"> <button onClick={() => setShowFilters(!showFilters)} className="btn btn-secondary btn-sm"> <Filter size={16} className="mr-1.5" /> Filters </button> {(statusFilter !== 'all' || typeFilter !== 'all' || routeFilter !== 'all' || refFilter !== 'all' || startDateFilter || endDateFilter) && (<button onClick={clearFilters} className="text-sm text-blue-600 hover:underline font-medium">Clear All Filters</button>)} </div>
+                 <div className="flex justify-between items-center mb-3"> <button onClick={() => setShowFilters(!showFilters)} className="btn btn-secondary btn-sm"> <Filter size={16} className="mr-1.5" /> පෙරහන් </button> {(statusFilter !== 'all' || typeFilter !== 'all' || routeFilter !== 'all' || refFilter !== 'all' || startDateFilter || endDateFilter) && (<button onClick={clearFilters} className="text-sm text-blue-600 hover:underline font-medium">සියලු පෙරහන් හිස් කරන්න</button>)} </div>
                  {showFilters && (<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 pt-3 border-t border-gray-200 animate-fade-in"> 
                     {/* Status Filter */}
                     <div> 
-                        <label htmlFor="statusFilter" className="lbl-xs">Status</label> 
+                        <label htmlFor="statusFilter" className="lbl-xs">තත්ත්වය</label> 
                         <select id="statusFilter" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input input-sm w-full"> 
-                            <option value="all">All</option> 
-                            <option value="Pending">Pending</option> 
-                            <option value="Completed">Completed</option> 
-                            <option value="Cancelled">Cancelled</option>
-                            <option value="Return">Return</option> 
+                            <option value="all">සියල්ල</option> 
+                            <option value="Pending">අපේක්ෂිත</option> 
+                            <option value="Completed">සම්පූර්ණයි</option> 
+                            <option value="Cancelled">අවලංගු කළා</option>
+                            <option value="Return">ආපසු</option> 
                         </select> 
                     </div> 
                     
                     {/* Type Filter */}
                     <div> 
-                        <label htmlFor="typeFilter" className="lbl-xs">Type</label> 
+                        <label htmlFor="typeFilter" className="lbl-xs">වර්ගය</label> 
                         <select id="typeFilter" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="input input-sm w-full"> 
-                            <option value="all">All</option> 
-                            {deliveryTypes.map(type => <option key={type} value={type}>{type}</option>)} 
+                            <option value="all">සියල්ල</option> 
+                            {deliveryTypes.map(type => {
+                                let displayName = type;
+                                if (type === 'Sample') displayName = 'සාම්පල';
+                                else if (type === 'Sittu') displayName = 'සිට්ටු';
+                                else if (type === 'Over') displayName = 'ඕවර්';
+                                return <option key={type} value={type}>{displayName}</option>;
+                            })}
                         </select> 
                     </div> 
                     
                     {/* Route Filter */}
                     <div> 
-                        <label htmlFor="routeFilter" className="lbl-xs">Route</label> 
+                        <label htmlFor="routeFilter" className="lbl-xs">මාර්ගය</label> 
                         <select id="routeFilter" value={routeFilter} onChange={(e) => setRouteFilter(e.target.value)} className="input input-sm w-full"> 
-                            <option value="all">All</option> 
+                            <option value="all">සියල්ල</option> 
                             {allRoutes.map(route => <option key={route.id} value={route.id}>{route.name} ({route.number})</option>)} 
                         </select> 
                     </div> 
@@ -621,9 +633,9 @@ const VisitListPage: React.FC = () => {
                     {/* Ref Filter - Only show if user is Admin */}
                      {user?.role === 'Admin' && (
                          <div> 
-                             <label htmlFor="refFilter" className="lbl-xs">Ref</label> 
+                             <label htmlFor="refFilter" className="lbl-xs">යොමුව</label> 
                              <select id="refFilter" value={refFilter} onChange={(e) => setRefFilter(e.target.value)} className="input input-sm w-full"> 
-                                 <option value="all">All</option> 
+                                 <option value="all">සියල්ල</option> 
                                  {allRefs.map(ref => (
                                      <option key={ref.id} value={ref.id}>
                                          {ref.first_name} {ref.last_name}
@@ -635,11 +647,11 @@ const VisitListPage: React.FC = () => {
                     
                     {/* Date Filters */}
                     <div> 
-                        <label htmlFor="startDateFilter" className="lbl-xs">Start Date</label> 
+                        <label htmlFor="startDateFilter" className="lbl-xs">ආරම්භක දිනය</label> 
                         <input type="date" id="startDateFilter" value={startDateFilter} onChange={(e) => setStartDateFilter(e.target.value)} className="input input-sm w-full" /> 
                     </div> 
                     <div> 
-                        <label htmlFor="endDateFilter" className="lbl-xs">End Date</label> 
+                        <label htmlFor="endDateFilter" className="lbl-xs">අවසාන දිනය</label> 
                         <input type="date" id="endDateFilter" value={endDateFilter} onChange={(e) => setEndDateFilter(e.target.value)} className="input input-sm w-full" /> 
                     </div> 
                 </div>)}
@@ -647,8 +659,8 @@ const VisitListPage: React.FC = () => {
 
             {/* Visit List Area */}
             <div>
-                 <div className="flex justify-between items-center mb-3 px-1"> <p className="text-sm text-gray-600">{filteredVisits.length} visits found</p> </div>
-                 {isLoading && !visits.length ? (<div className="loading-placeholder">Loading...</div>) : filteredVisits.length > 0 ? (
+                 <div className="flex justify-between items-center mb-3 px-1"> <p className="text-sm text-gray-600"> සංචාර {filteredVisits.length} හමු විය</p> </div>
+                 {isLoading && !visits.length ? (<div className="loading-placeholder">පූරණය වෙමින්...</div>) : filteredVisits.length > 0 ? (
                      <div className="space-y-4">
                          {/* Visit Card Mapping */}
                          {filteredVisits.map((visit) => {
@@ -658,37 +670,42 @@ const VisitListPage: React.FC = () => {
                                      {/* Card Top Bar */}
                                      <div className={`visit-card-topbar ${getStatusClasses(visit.status).replace('text-', 'bg-').replace('border-', 'bg-').split(' ')[0].replace('bg', 'border')}`}>
                                          <span className={`visit-card-status ${getStatusClasses(visit.status)}`}> {/* Status */} {visit.status === 'Completed' && <Check size={12} className="-ml-0.5 mr-1" />} {visit.status === 'Cancelled' && <X size={12} className="-ml-0.5 mr-1" />} {visit.status} </span>
-                                         <span className={`visit-card-type ${visit.type === 'Sample' ? 'badge-blue' : visit.type === 'Sittu' ? 'badge-pink' : visit.type === 'Over' ? 'badge-teal' : 'badge-gray'}`}>{visit.type}</span>
+                                         <span className={`visit-card-type ${visit.type === 'Sample' ? 'badge-blue' : visit.type === 'Sittu' ? 'badge-pink' : visit.type === 'Over' ? 'badge-teal' : 'badge-gray'}`}>
+                                            {visit.type === 'Sample' ? 'සාම්පල' : 
+                                             visit.type === 'Sittu' ? 'සිට්ටු' : 
+                                             visit.type === 'Over' ? 'ඕවර්' : 
+                                             visit.type}
+                                         </span>
                                      </div>
                                      {/* Card Main Content */}
                                      <div className="visit-card-content">
                                          {/* Left Details */}
                                          <div className="visit-card-details">
                                              {/* Display fields: Buyer, Phones, Address, Items, Date, Notes */}
-                                            <div className="detail-row"> <User size={16} className="detail-icon" /> <h3 className="detail-buyer">{visit.buyer_name || 'N/A'}</h3> </div>
+                                            <div className="detail-row"> <User size={16} className="detail-icon" /> <h3 className="detail-buyer">{visit.buyer_name || 'නැත'}</h3> </div>
                                             <div className="detail-row-group"> 
                                                 <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">1:</span><span>{visit.number_one || <i className="text-gray-400">n/a</i>}</span></div> 
                                                 <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">2:</span><span>{visit.number_two || <i className="text-gray-400">n/a</i>}</span></div>
                                                 {visit.number_three && <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">3:</span><span>{visit.number_three}</span></div>}
                                                 {visit.number_four && <div className="detail-row text-sm"><Phone size={12} className="detail-icon-sm" /><span className="font-medium mr-1">4:</span><span>{visit.number_four}</span></div>}
                                             </div>
-                                            <div className="detail-row"> <MapPin size={14} className="detail-icon" /> <span>{visit.address || <i className="text-gray-400">No address</i>}</span> </div>
+                                            <div className="detail-row"> <MapPin size={14} className="detail-icon" /> <span>{visit.address || <i className="text-gray-400">ලිපිනයක් නැත</i>}</span> </div>
                                             {/* Route Name */}
-                                            <div className="detail-row"> <Route size={14} className="detail-icon" /> <span className="font-medium">Route:</span> <span className="ml-1">{visit.routes?.name || allRoutes.find(r => r.id === visit.route_id)?.name || <i className="text-gray-400">No route</i>}</span> </div>
+                                            <div className="detail-row"> <Route size={14} className="detail-icon" /> <span className="font-medium">මාර්ගය:</span> <span className="ml-1">{visit.routes?.name || allRoutes.find(r => r.id === visit.route_id)?.name || <i className="text-gray-400">මාර්ගයක් නැත</i>}</span> </div>
                                             {/* Bill Number */}
-                                            <div className="detail-row"> <FileText size={14} className="detail-icon" /> <span className="font-medium">Bill #:</span> <span className="ml-1">{visit.bill_number || <i className="text-gray-400">No bill number</i>}</span> </div>
-                                            <div className="detail-row"> <Package size={14} className="detail-icon" /> <div className="flex flex-wrap gap-1"> {(visit.item_id?.length || 0) > 0 ? visit.item_id?.map((id, index) => <span key={`${id}-${index}`} className="badge badge-indigo">{getItemDisplay(id)}</span>) : <i className="text-gray-400 text-xs">No items</i>} </div> </div>
+                                            <div className="detail-row"> <FileText size={14} className="detail-icon" /> <span className="font-medium">බිල්පත් අංකය:</span> <span className="ml-1">{visit.bill_number || <i className="text-gray-400">බිල්පත් අංකයක් නැත</i>}</span> </div>
+                                            <div className="detail-row"> <Package size={14} className="detail-icon" /> <div className="flex flex-wrap gap-1"> {(visit.item_id?.length || 0) > 0 ? visit.item_id?.map((id, index) => <span key={`${id}-${index}`} className="badge badge-indigo">{getItemDisplay(id)}</span>) : <i className="text-gray-400 text-xs">භාණ්ඩ නැත</i>} </div> </div>
                                             <div className="detail-row text-sm text-gray-500"> <CalendarRange size={14} className="detail-icon" /> {formatDate(visit.date)} </div>
                                             {visit.notes && (<div className="detail-row detail-notes"> <ArrowDownAZ size={14} className="detail-icon" /> <span className="whitespace-pre-wrap italic">{visit.notes}</span> </div>)}
                                          </div>
                                          {/* Right Actions */}
                                          <div className="visit-card-actions">
                                              <div className="flex items-center gap-2 md:mb-auto">
-                                                 <button onClick={() => handleOpenEditModal(visit)} className="action-btn hover-blue" title="Edit visit" disabled={isSaving}><Edit size={16} /></button>
-                                                 <button onClick={() => deleteVisit(visit.id)} className="action-btn hover-red" title="Delete visit" disabled={isSaving}><Trash2 size={16} /></button>
+                                                 <button onClick={() => handleOpenEditModal(visit)} className="action-btn hover-blue" title="සංචාරය සංස්කරණය කරන්න" disabled={isSaving}><Edit size={16} /></button>
+                                                 <button onClick={() => deleteVisit(visit.id)} className="action-btn hover-red" title="සංචාරය මකන්න" disabled={isSaving}><Trash2 size={16} /></button>
                                              </div>
-                                             <a href={hasValidLocation ? `https://www.google.com/maps/dir/?api=1&destination=${visit.location.lat},${visit.location.lng}` : '#'} className={`btn btn-sm w-full md:w-auto ${hasValidLocation ? 'btn-outline border-blue-500 text-blue-600 hover:bg-blue-50' : 'btn-disabled-red'}`} target={hasValidLocation ? "_blank" : undefined} rel={hasValidLocation ? "noopener noreferrer" : undefined} title={!hasValidLocation ? "Location missing" : "Navigate"}>
-                                                {hasValidLocation ? <MapPin size={14} className="mr-1.5" /> : <AlertTriangle size={14} className="mr-1.5 text-red-600" />} Navigate
+                                             <a href={hasValidLocation ? `https://www.google.com/maps/dir/?api=1&destination=${visit.location.lat},${visit.location.lng}` : '#'} className={`btn btn-sm w-full md:w-auto ${hasValidLocation ? 'btn-outline border-blue-500 text-blue-600 hover:bg-blue-50' : 'btn-disabled-red'}`} target={hasValidLocation ? "_blank" : undefined} rel={hasValidLocation ? "noopener noreferrer" : undefined} title={!hasValidLocation ? "ස්ථානය නොමැත" : "සංචාරය කරන්න"}>
+                                                {hasValidLocation ? <MapPin size={14} className="mr-1.5" /> : <AlertTriangle size={14} className="mr-1.5 text-red-600" />} සංචාරය කරන්න
                                              </a>
                                          </div>
                                      </div>
@@ -696,7 +713,7 @@ const VisitListPage: React.FC = () => {
                              );
                          })}
                      </div>
-                 ) : ( <div className="empty-state"> {/* Empty state content */} No visits found... </div> )}
+                 ) : ( <div className="empty-state"> {/* Empty state content */} සංචාර හමු නොවීය... </div> )}
             </div>
 
             {/* Edit Modal Render */}
