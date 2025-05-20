@@ -240,9 +240,7 @@ const RefsSection: React.FC<RefsSectionProps> = ({
                 tableName="users"
                 itemType="ref"
                 searchPlaceholder="Search referrers..."
-                filters={filters}
-                
-                
+                filters={[]} /* Removed filter buttons */
                 editingCell={editingCell}
                 setEditingCell={setEditingCell}
                 editValue={editValue}

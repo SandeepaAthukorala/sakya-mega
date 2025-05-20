@@ -451,10 +451,11 @@ const TableSection: React.FC<TableSectionProps> = ({
       
       if (error) throw error;
       
-      // Update local state
+      // Update local state immediately
       setData(prevData => prevData.filter(item => item.id !== id));
     } catch (error) {
       console.error(`Error deleting ${itemType}:`, error);
+      alert(`Failed to delete ${itemType}. Please try again.`);
     }
   };
 

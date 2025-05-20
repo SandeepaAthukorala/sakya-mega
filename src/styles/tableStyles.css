@@ -4,6 +4,12 @@
 .table td, .table th {
   font-size: 0.875rem; /* Smaller font size for table content */
   padding: 0.5rem 0.75rem; /* Reduced padding */
+  border-right: 1px solid rgba(229, 231, 235, 0.8); /* Add column divider lines */
+}
+
+/* Remove border from last column */
+.table td:last-child, .table th:last-child {
+  border-right: none;
 }
 
 /* Reduce button sizes */

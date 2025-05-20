@@ -9,6 +9,8 @@ import { Visit, LocationData } from '../types'; // Assuming Visit type includes 
 import { supabase } from '../supabaseClient';
 import { format, parseISO, isValid, startOfDay, endOfDay } from 'date-fns';
 
+
+
 // --- react-select Filter & Styles ---
 const filterConfig = { ignoreCase: true, matchFrom: 'any' as const, trim: true };
 const customFilter = (option: any, rawInput: string) => createFilter(filterConfig)(option, rawInput);
@@ -216,7 +218,7 @@ const EditVisitModal: React.FC<EditVisitModalProps> = ({
                                 <option value="Pending">අපේක්ෂිත</option>
                                 <option value="Completed">සම්පූර්ණයි</option>
                                 <option value="Cancelled">අවලංගු කළා</option>
-<option value="Return">ආපසු</option>
+                                <option value="Return">ආපසු</option>
                             </select>
                         </div>
                          {/* Visit Type */}
@@ -511,7 +513,30 @@ const VisitListPage: React.FC = () => {
         const item = allItems.find(i => i.id === itemId || i.item_number.toString() === itemId); 
         return item ? `${item.item_name} - ${item.item_number}` : `Unknown Item`; 
     };
-    const getStatusClasses = (status: string) => { /* ... */ switch (status?.toLowerCase()) { case 'completed': return 'bg-green-100 text-green-700 border-green-300'; case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-300'; case 'cancelled': return 'bg-red-100 text-red-700 border-red-300'; case 'return': return 'bg-blue-100 text-blue-700 border-blue-300'; default: return 'bg-gray-100 text-gray-700 border-gray-300'; } };
+    const statusSinhalaLabels: { [key: string]: string } = {
+        pending: 'අපේක්ෂිත',
+        completed: 'සම්පූර්ණයි',
+        cancelled: 'අවලංගු කළා',
+        return: 'ආපසු',
+      };
+      
+      const getSinhalaLabel = (status: string) => statusSinhalaLabels[status.toLowerCase()] || status;
+      
+    
+    const getStatusClasses = (status: string) => {
+        switch (status?.toLowerCase()) {
+          case 'completed':
+            return 'bg-green-100 text-green-700 border-green-300';
+          case 'pending':
+            return 'bg-yellow-100 text-yellow-700 border-yellow-300';
+          case 'cancelled':
+            return 'bg-red-100 text-red-700 border-red-300';
+          case 'return':
+            return 'bg-blue-100 text-blue-700 border-blue-300';
+          default:
+            return 'bg-gray-100 text-gray-700 border-gray-300';
+        }
+      };
 
 
     // --- CRUD Handlers ---
@@ -669,7 +694,14 @@ const VisitListPage: React.FC = () => {
                                  <div key={visit.id} className="visit-card">
                                      {/* Card Top Bar */}
                                      <div className={`visit-card-topbar ${getStatusClasses(visit.status).replace('text-', 'bg-').replace('border-', 'bg-').split(' ')[0].replace('bg', 'border')}`}>
-                                         <span className={`visit-card-status ${getStatusClasses(visit.status)}`}> {/* Status */} {visit.status === 'Completed' && <Check size={12} className="-ml-0.5 mr-1" />} {visit.status === 'Cancelled' && <X size={12} className="-ml-0.5 mr-1" />} {visit.status} </span>
+                                     <span className={`visit-card-status ${getStatusClasses(visit.status)}`}>
+  {/* Icons */}
+  {visit.status.toLowerCase() === 'completed' && <Check size={12} className="-ml-0.5 mr-1" />}
+  {visit.status.toLowerCase() === 'cancelled' && <X size={12} className="-ml-0.5 mr-1" />}
+  
+  {/* Sinhala label */}
+  {statusSinhalaLabels[visit.status.toLowerCase()] || visit.status}
+</span>
                                          <span className={`visit-card-type ${visit.type === 'Sample' ? 'badge-blue' : visit.type === 'Sittu' ? 'badge-pink' : visit.type === 'Over' ? 'badge-teal' : 'badge-gray'}`}>
                                             {visit.type === 'Sample' ? 'සාම්පල' : 
                                              visit.type === 'Sittu' ? 'සිට්ටු' : 
