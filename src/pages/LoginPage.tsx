@@ -32,8 +32,15 @@ const LoginPage: React.FC = () => {
     try {
       await login(email, password);
       // Redirection will be handled by the useEffect
-    } catch (err) {
-      setError('Invalid email or password. Please try again.');
+    } catch (err: any) {
+      // Check if this is the specific Sinhala error message for Ref users with access=false
+      if (err.message === 'ඔබට පිවිසීමට අයිතියක් නොමැත') {
+        // Display the Sinhala error message as is
+        setError(err.message);
+      } else {
+        // For all other errors, show a generic message to avoid information leakage
+        setError('Invalid email or password. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

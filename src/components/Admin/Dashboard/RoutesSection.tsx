@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { User } from '../../../types';
 import { Route, EditingCellState, NewRouteDataType } from '../types';
 import { HighlightMatch } from './index';
@@ -32,6 +32,55 @@ const RoutesSection: React.FC<RoutesSectionProps> = ({
     inputRef,
     isEditingOrAdding
 }) => {
+    // State for referrer filter
+    const [activeReferrerFilter, setActiveReferrerFilter] = useState<string>('all');
+    // Create referrer filter buttons
+    const referrerFilters = useMemo(() => {
+        // Create a filter for all routes
+        const allRoutesFilter = {
+            key: 'all',
+            label: 'All',
+            filter: () => true
+        };
+        
+        // Create a filter for unassigned routes
+        const unassignedFilter = {
+            key: 'unassigned',
+            label: 'Unassigned',
+            filter: (route: Route) => !route.ref_id
+        };
+        
+        // Create filters for each referrer that has at least one route assigned
+        const referrersWithRoutes = allRefs.filter(ref => 
+            routes.some(route => route.ref_id === ref.id)
+        );
+        
+        const referrerSpecificFilters = referrersWithRoutes.map(ref => ({
+            key: `ref-${ref.id}`,
+            label: ref.first_name,
+            filter: (route: Route) => route.ref_id === ref.id
+        }));
+        
+        return [allRoutesFilter, unassignedFilter, ...referrerSpecificFilters];
+    }, [allRefs, routes]);
+    
+    // Filter routes based on selected referrer
+    const filteredRoutes = useMemo(() => {
+        if (activeReferrerFilter === 'all') {
+            return routes;
+        }
+        
+        const selectedFilter = referrerFilters.find(filter => filter.key === activeReferrerFilter);
+        if (!selectedFilter) return routes;
+        
+        return routes.filter(selectedFilter.filter);
+    }, [routes, activeReferrerFilter, referrerFilters]);
+    
+    // Handle referrer filter button click
+    const handleReferrerFilterClick = (filterKey: string) => {
+        setActiveReferrerFilter(prevFilter => prevFilter === filterKey ? 'all' : filterKey);
+    };
+    
     // Define columns for the table
     const columns = [
         {
@@ -100,25 +149,43 @@ const RoutesSection: React.FC<RoutesSectionProps> = ({
     };
 
     return (
-        <TableSection
-            title="Routes"
-            data={routes}
-            setData={setRoutes}
-            columns={columns}
-            tableName="routes"
-            itemType="route"
-            searchPlaceholder="Search routes..."
-            onAddItem={handleAddRoute}
-            addButtonText="Add Route"
-            editingCell={editingCell}
-            setEditingCell={setEditingCell}
-            editValue={editValue}
-            setEditValue={setEditValue}
-            isLoadingInline={isLoadingInline}
-            setIsLoadingInline={setIsLoadingInline}
-            inputRef={inputRef}
-            dateField="created_at"
-        />
+        <div>
+            {/* Referrer Filter Buttons */}
+            <div className="mb-4">
+                <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-sm font-medium text-neutral-600">Filter by Referrer:</span>
+                    {referrerFilters.map(filter => (
+                        <button
+                            key={filter.key}
+                            onClick={() => handleReferrerFilterClick(filter.key)}
+                            className={`btn btn-sm ${activeReferrerFilter === filter.key ? 'btn-primary' : 'btn-outline'}`}
+                        >
+                            {filter.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            
+            <TableSection
+                title="Routes"
+                data={filteredRoutes}
+                setData={setRoutes}
+                columns={columns}
+                tableName="routes"
+                itemType="route"
+                searchPlaceholder="Search routes..."
+                onAddItem={handleAddRoute}
+                addButtonText="Add Route"
+                editingCell={editingCell}
+                setEditingCell={setEditingCell}
+                editValue={editValue}
+                setEditValue={setEditValue}
+                isLoadingInline={isLoadingInline}
+                setIsLoadingInline={setIsLoadingInline}
+                inputRef={inputRef}
+                dateField="created_at"
+            />
+        </div>
     );
 };
 

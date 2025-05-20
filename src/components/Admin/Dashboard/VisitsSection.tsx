@@ -165,8 +165,7 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                 <div>
                     {visit.ref_id ? (
                         <>
-                            {allRefs.find(ref => ref.id === visit.ref_id)?.first_name || 'Unknown'} 
-                            {allRefs.find(ref => ref.id === visit.ref_id)?.last_name || ''}
+                            {allRefs.find(ref => ref.id === visit.ref_id)?.first_name || 'Unknown'}
                         </>
                     ) : (
                         <span className="text-neutral-400">Unassigned</span>
@@ -285,7 +284,7 @@ const VisitsSection: React.FC<VisitsSectionProps> = ({
                             return (
                                 <div key={index} className="flex items-center gap-1">
                                     <div className="text-sm badge badge-outline">
-                                        {item ? `${item.item_number} - ${item.item_name}${item.value ? ` (Rs.${item.value})` : ''}` : `Item ${itemNumberStr} (Unknown)`}
+                                        {item ? `${item.item_name} - ${item.item_number}` : `Item ${itemNumberStr} (Unknown)`}
                                     </div>
                                     <button
                                         className="btn btn-xs btn-ghost text-error"

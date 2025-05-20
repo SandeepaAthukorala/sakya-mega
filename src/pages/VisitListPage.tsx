@@ -509,7 +509,7 @@ const VisitListPage: React.FC = () => {
     const getItemDisplay = (itemId: string): string => { 
         // Find item by either UUID or item_number string
         const item = allItems.find(i => i.id === itemId || i.item_number.toString() === itemId); 
-        return item ? `${item.item_name} (${item.item_number})` : `Unknown Item`; 
+        return item ? `${item.item_name} - ${item.item_number}` : `Unknown Item`; 
     };
     const getStatusClasses = (status: string) => { /* ... */ switch (status?.toLowerCase()) { case 'completed': return 'bg-green-100 text-green-700 border-green-300'; case 'pending': return 'bg-yellow-100 text-yellow-700 border-yellow-300'; case 'cancelled': return 'bg-red-100 text-red-700 border-red-300'; case 'return': return 'bg-blue-100 text-blue-700 border-blue-300'; default: return 'bg-gray-100 text-gray-700 border-gray-300'; } };
 

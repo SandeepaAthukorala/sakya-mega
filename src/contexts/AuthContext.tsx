@@ -144,6 +144,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!userData) {
         throw new Error('Failed to fetch user data');
       }
+      
+      // Check access boolean for users with 'Ref' role
+      if (userData.role === 'Ref' && userData.access === false) {
+        // Throw specific error for Ref users with access set to false
+        throw new Error('ඔබට පිවිසීමට අයිතියක් නොමැත'); // 'You do not have permission to access' in Sinhala
+      }
+      
       setUser(userData);
     } catch (err) {
       console.error('Login failed:', err);

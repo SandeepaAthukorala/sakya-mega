@@ -677,16 +677,8 @@ const TableSection: React.FC<TableSectionProps> = ({
                 )}
                 
                 <div className="flex gap-2 ml-auto">
-                  {/* Column filters button */}
-                  <button 
-                    className={`btn ${showColumnFilters ? 'btn-primary' : 'btn-outline'} btn-sm`}
-                    onClick={() => setShowColumnFilters(!showColumnFilters)}
-                  >
-                    {showColumnFilters ? 'Hide Filters' : 'Column Filters'}
-                  </button>
-                  
-                  {/* Date filter button */}
-                  {dateField && (
+                  {/* Date filter button - only shown for Visits table */}
+                  {dateField && itemType === 'visit' && (
                     <button 
                       className={`btn ${showDateFilter ? 'btn-primary' : 'btn-outline'} btn-sm`}
                       onClick={() => setShowDateFilter(!showDateFilter)}
